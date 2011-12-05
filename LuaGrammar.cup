@@ -1,0 +1,33 @@
+
+package luaGrammar;
+
+import java_cup.runtime.*;
+
+parser code
+{:
+:}
+
+action code
+{:
+:}
+
+terminal		VAR_NAME,ASSIGN, INT, FLOAT, EXP, HEX, COMMENT, WS, NEWLINE, LINE_COMMENT,SEMI, NORMALSTRING,CHARSTRING,LONGSTRING;
+
+non terminal	statement, expr, comment;
+
+
+statement           ::= expr | expr SEMI;
+
+expr                ::= VAR_NAME ASSIGN VAR_NAME
+                      | VAR_NAME ASSIGN FLOAT
+                      | VAR_NAME ASSIGN EXP
+                      | VAR_NAME ASSIGN NORMALSTRING
+                      | ASSIGN EXP
+                      | ASSIGN NORMALSTRING
+                      | ASSIGN CHARSTRING
+                      | ASSIGN LONGSTRING
+                      ;
+                      
+comment				::= COMMENT
+                      | LINE_COMMENT
+                      ;

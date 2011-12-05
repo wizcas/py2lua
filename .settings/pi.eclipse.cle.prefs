@@ -1,0 +1,12 @@
+#Sun Dec 04 17:21:04 CET 2011
+//LuaGrammar.cup/cup-compact-red=false
+//LuaGrammar.cup/cup-debug=false
+//LuaGrammar.cup/cup-expected-conflicts=0
+//LuaGrammar.cup/cup-no-positions=false
+//LuaGrammar.cup/cup-no-scanner=false
+//LuaGrammar.cup/cup-non-terms=false
+//LuaGrammar.cup/cup-output=src
+//LuaGrammar.cup/cup-parser-class=LuaGrammarCup
+//LuaGrammar.cup/cup-symbols-class=LuaGrammarSym
+//LuaGrammar.cup/cup-symbols-if=true
+eclipse.preferences.version=1
