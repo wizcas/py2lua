@@ -1,0 +1,27 @@
+
+package pyGrammar;
+
+import java_cup.runtime.*;
+
+parser code
+{:
+:}
+
+action code
+{:
+:}
+
+terminal		NEWLINE, NAME;
+
+non terminal	file_input, file_input_begin, stmt;
+
+
+file_input         ::= file_input_begin;
+
+file_input_begin   ::= NEWLINE file_input_begin
+					 | stmt file_input_begin
+					 | stmt
+					 | NEWLINE
+					 ;
+
+stmt               ::= NAME;
