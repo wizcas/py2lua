@@ -23,6 +23,10 @@ import static luaGrammar.LuaGrammarSym.*;
 %cup
 // %cupdebug
 
+%eofval{ 
+	return sym(EOF); 
+%eofval}1
+
 %init{
 	// TODO: code that goes to constructor
 %init}
@@ -47,12 +51,28 @@ import static luaGrammar.LuaGrammarSym.*;
 
 VAR_NAME 	= [a-z|A-Z|_] [a-z|A-Z|_|0-9]*
 ASSIGN		= =
+PLUS		= "+"
+MINUS		= "-"
+MULT		= "*"
+DIVIDE		= "/"
+MOD			= %
+EXPON		= \^
+DOTDOT		= ".."
+MINOR		= <
+MINEQ		= "<="
+MAIOR		= >
+MAIEQ		= ">="
+EQ			= "=="
+NEQ			= "~="
+AND			= "and"
+OR			= "or"
+NIL			= "nil"
 INT			= [0-9]+
 FLOAT 		= INT ("." INT)?
 EXP			= [INT| FLOAT] [E|e] ["-"]? INT
 HEX			= 0[xX][0-9A-Fa-f]+
-LINE_COMMENT = "--" (![\n | \r])* {NEWLINE}
-COMMENT		= "--[[" (![])* "]]" {NEWLINE}/*da rivedere!*/
+LINE_COMMENT = \-\- ([^\n | \r])*
+COMMENT		= \-\-\[\[ (.|\n)* \]\]/*da rivedere!*/
 NEWLINE		= \r | \n |\r\n
 WS  		=  [\ |\t|\u000C]
 SEMI		= ;
@@ -101,25 +121,54 @@ OctalEscape			= \\ [0-3] [0-7] [0-7]
     				|   \\ [0-7] [0-7]
     				|   \\ [0-7]
 HexDigit 			= [0-9|a-f|A-F]
-
-/************************** CODICE ANTLR **********************
-NORMALSTRING
-    :  '"' ( EscapeSequence | ~('\\'|'"') )* '"' 
-    ;
-
-CHARSTRING
-   :	'\'' ( EscapeSequence | ~('\''|'\\') )* '\''
-   ;
-
-LONGSTRING
-	:	'['('=')*'[' ( EscapeSequence | ~('\\'|']') )* ']'('=')*']'
-	;
-**********************************/
-
 %%
 
-{VAR_NAME}		{	return sym(VAR_NAME); }
-{ASSIGN}		{	return sym(ASSIGN); }
+{PLUS}			{return sym(PLUS);}
+{MINUS}			{return sym(MINUS);}
+{MULT}			{return sym(MULT);}
+{DIVIDE}		{return sym(DIVIDE);}
+{MOD}			{return sym(MOD);}
+{EXPON}			{return sym(EXPON);}
+{DOTDOT}		{return sym(DOTDOT);}
+{MINOR}			{return sym(MINOR);}
+{MINEQ}			{return sym(MINEQ);}
+{MAIOR}			{return sym(MAIOR);}
+{MAIEQ}			{return sym(MAIEQ);}
+{EQ}			{return sym(EQ);}
+{NEQ}			{return sym(NEQ);}
+{AND}			{return sym(AND);}
+{OR}			{return sym(OR);}
+{NIL}			{return sym(NIL);}
+"not"			{return sym(NOT);}
+"false"			{return sym(FALSE);}
+"true"			{return sym(TRUE);}
+"function"		{return sym(FUNCTION);}
+"."				{return sym(DOT);}
+","				{return sym(COMMA);}
+"while"			{return sym(WHILE);}
+"for"			{return sym(FOR);}
+"do"			{return sym(DO);}
+"end"			{return sym(END);}
+"repeat"		{return sym(REPEAT);}
+"until"			{return sym(UNTIL);}
+"then"			{return sym(THEN);}
+"if"			{return sym(IF);}
+"elseif"		{return sym(ELSEIF);}
+"else"			{return sym(ELSE);}
+"local"			{return sym(LOCAL);}
+"return"		{return sym(RETURN);}
+"break"			{return sym(BREAK);}
+"in"			{return sym(IN);}
+"..."			{return sym(TRIDOT);}
+"#"				{return sym(SHARP);}
+"("				{return sym(LPAREN);}
+")"				{return sym(RPAREN);}
+"["				{return sym(LBRACK);}
+"]"				{return sym(RBRACK);}
+"{"				{return sym(LCURLY);}
+"}"				{return sym(RCURLY);}
+{VAR_NAME}		{	System.out.println("varname");return sym(VAR_NAME); }
+{ASSIGN}		{	System.out.println("assign");return sym(ASSIGN); }
 {SEMI}			{	return sym(SEMI); }
 {INT}			{	return sym(INT); }
 {FLOAT}			{	return sym(FLOAT); }
