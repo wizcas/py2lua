@@ -11,23 +11,170 @@ action code
 {:
 :}
 
-terminal		VAR_NAME,ASSIGN, INT, FLOAT, EXP, HEX, COMMENT, WS, NEWLINE, LINE_COMMENT,SEMI, NORMALSTRING,CHARSTRING,LONGSTRING;
+terminal		VAR_NAME,ASSIGN, INT, FLOAT, EXP, HEX, COMMENT, WS, NEWLINE, LINE_COMMENT; 
+terminal		SEMI,COMMA,DOT,NORMALSTRING,CHARSTRING,LONGSTRING;
+terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOTDOT;
+terminal		MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ, AND, OR, NIL;
+terminal		NOT, FALSE, TRUE, TRIDOT, SHARP;
+terminal		LPAREN, RPAREN, LBRACK, RBRACK, LCURLY, RCURLY;
+terminal		FUNCTION, WHILE,FOR,DO,END,REPEAT,UNTIL,IF,ELSEIF,THEN,ELSE,LOCAL,RETURN,BREAK,IN;
 
-non terminal	statement, expr, comment;
+non terminal	chunk, block, stat, statement, expr, exp, expressions, binop, unop, last_stat;
+non terminal	number, string, explist, funcbody, function, functioncall, fieldlist, fieldsep, field_member;
+non terminal	prefixexp, var, name_and_args, varlist, var_recourse, var_or_exp, field, tableconstructor, explist_member, stat_recourse;
+non terminal	stat_recoursive, var_recoursive, exp_member, exp_recoursive, exp_member_recoursive , namelist;
+non terminal	return_stat, for_stat, if_stat, if_recoursive;
 
 
-statement           ::= expr | expr SEMI;
+/*Precedenza operatori: 
+	or
+     and
+     <     >     <=    >=    ~=    ==
+     .. (rigth associative)
+     +     -
+     *     /     %
+     not   #     - (unary)
+     ^ (rigth associative)
+*/
+precedence left OR;
+precedence left AND;
+precedence left MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
+precedence left DOTDOT;
+precedence left PLUS, MINUS;
+precedence left MULT, DIVIDE, MOD;
+precedence left NOT, SHARP;
+precedence left EXPON;
 
-expr                ::= VAR_NAME ASSIGN VAR_NAME
-                      | VAR_NAME ASSIGN FLOAT
-                      | VAR_NAME ASSIGN EXP
-                      | VAR_NAME ASSIGN NORMALSTRING
-                      | ASSIGN EXP
-                      | ASSIGN NORMALSTRING
-                      | ASSIGN CHARSTRING
-                      | ASSIGN LONGSTRING
-                      ;
+/*unità operativa di Lua, composto da una sequenza di statement seguiti opzionalmente da un ;*/
+chunk			::= stat_recoursive
+				| stat_recoursive last_stat
+				|
+				;
+stat_recoursive ::= stat
+				| stat SEMI	
+				| stat stat_recoursive
+				| stat SEMI stat_recoursive
+				;
+/* un blocco è una lista di statement, sintatticamente è come un chunk*/
+block			::= chunk;
+/*un blocco può essere esplicitamente delimitato per produrre un singolo statement*/
+stat			::= DO block END
+				| varlist ASSIGN explist /*Lua consente assegnazioni multiple*/
+				| WHILE exp DO block END /*costrutti if while e repeat*/
+				| REPEAT block UNTIL exp
+				| if_stat {:System.out.println("if statement");:}
+				| for_stat
+				| LOCAL namelist
+				| LOCAL namelist ASSIGN explist
+				;
+if_stat			::= IF exp THEN block END
+				| IF exp THEN block if_recoursive END
+				| IF exp THEN block ELSE block END
+				| IF exp THEN block if_recoursive ELSE block END
+				;
+if_recoursive	::= ELSEIF exp THEN block 
+				| ELSEIF exp THEN block if_recoursive;
+last_stat		::= RETURN | RETURN explist | BREAK
+				| RETURN SEMI | RETURN explist SEMI | BREAK SEMI
+				;
+/*ripete un blocco di codice incrementando la prima variabile che parte dalla prima exp
+fino alla seconda exp, incrementandosi della terza exp che è opzionale
+Oppure può ciclare in base ad una lista di nomi all'interno di una tabella*/
+for_stat		::= FOR VAR_NAME ASSIGN exp COMMA exp DO block END {:System.out.println("for stat");:}
+				| FOR VAR_NAME ASSIGN exp COMMA exp COMMA exp DO block END
+				| FOR namelist IN explist DO block END {:System.out.println("for stat in");:}
+				;
+varlist			::= var_recoursive;
+explist			::= exp_recoursive;
+var_recoursive	::= var | var COMMA var_recoursive {:System.out.println("var recoursive"); :};
+exp_recoursive	::= exp | exp COMMA exp_recoursive {:System.out.println("exp recoursive"); :};
+/*le espressioni che seguono servono per matchare: 
+exp_member (binop exp_member)* e quindi binop exp_member va messo ricorsivo*/
+exp				::= exp_member_recoursive;
+exp_member_recoursive ::= exp_member | exp_member binop exp_member_recoursive;
+exp_member		::= prefixexp
+				| NIL | FALSE | TRUE
+				| number {:System.out.println("exp number"); :}
+				| string
+				| function
+				| tableconstructor
+				| TRIDOT
+				| unop exp_member
+				;
+prefixexp		::= var | functioncall | LPAREN exp RPAREN;
+tableconstructor ::= LCURLY RCURLY | LCURLY fieldlist RCURLY {: System.out.println("table constructor");:};
+fieldlist		::= field | field fieldsep fieldlist;
+field			::= LBRACK exp RBRACK ASSIGN exp
+				| VAR_NAME ASSIGN exp
+				| exp
+				;
+fieldsep		::= SEMI | COMMA;
+/*un singolo nome denota una variabile,
+le parentesi quadre denotano l'indice di una tabella,
+una pillola sintattica per ritornare l'elemento di una tabella
+è tabella.nome che sta per ["nome"]
+*/
+var				::= VAR_NAME
+				| prefixexp LBRACK exp RBRACK {:System.out.println("var"); :}
+				| prefixexp DOT VAR_NAME
+				;
+namelist		::= VAR_NAME | VAR_NAME COMMA namelist;
+binop 			::= PLUS | MINUS | MULT | DIVIDE | EXPON | MOD | DOTDOT
+		 		| MINOR | MINEQ | AND | OR
+		 		;
+unop		::= MINUS | NOT | SHARP; 
+number		::= INT | FLOAT | EXP;
+string		::= NORMALSTRING | CHARSTRING|LONGSTRING;
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+chunk			::= stat_recourse laststat SEMI 
+				|	stat_recourse laststat
+				;
+block			::= chunk;
+stat_recourse	::= stat  stat_recourse;
+stat			::= explist | explist SEMI;
+laststat		::= RETURN explist
+				| RETURN
+				| BREAK
+				;
+explist			::= explist_member exp;
+explist_member	::= exp COMMA explist_member;
+exp				::= expressions | unop expressions | expressions binop expressions;
+expressions		::=NIL | FALSE | TRUE | number | string
+				| TRIDOT | function | prefixexp | tableconstructor;
+function		::= FUNCTION funcbody;
+funcbody		::= LPAREN RPAREN block END;
+functioncall	::= var_or_exp name_and_args;
+name_and_args	::= ;
+var_or_exp		::= var | LPAREN exp RPAREN; 
+prefixexp		::= var | functioncall | LPAREN exp RPAREN;
+varlist			::= var | var var_recourse;
+var_recourse	::= COMMA var | COMMA var var_recourse;
+var				::= VAR_NAME | prefixexp LBRACK exp RBRACK
+				| prefixexp DOT VAR_NAME;
+tableconstructor ::= LCURLY RCURLY
+				|LCURLY fieldlist RCURLY;
+fieldlist		::= field field_member | field field_member fieldsep;
+field_member	::= fieldsep field field_member;
+fieldsep		::= COMMA | SEMI;
+field			::= LBRACK exp RBRACK ASSIGN exp
+				| VAR_NAME ASSIGN exp
+				| exp
+				;
+
                       
 comment				::= COMMENT
                       | LINE_COMMENT
                       ;
+*/
