@@ -68,14 +68,15 @@ AND			= "and"
 OR			= "or"
 NIL			= "nil"
 INT			= [0-9]+
-FLOAT 		= INT ("." INT)?
-EXP			= [INT| FLOAT] [E|e] ["-"]? INT
+FLOAT		= ({INT}({DOT}{INT})?)
+EXP			= ({INT}| {FLOAT})[E|e]["-"]?{INT}
 HEX			= 0[xX][0-9A-Fa-f]+
 LINE_COMMENT = \-\- ([^\n | \r])*
 COMMENT		= \-\-\[\[ (.|\n)* \]\]/*da rivedere!*/
 NEWLINE		= \r | \n |\r\n
 WS  		=  [\ |\t|\u000C]
 SEMI		= ;
+DOT			= \.
 
 /*
 Stringhe accettate da LUA:
@@ -139,11 +140,14 @@ HexDigit 			= [0-9|a-f|A-F]
 {AND}			{return sym(AND);}
 {OR}			{return sym(OR);}
 {NIL}			{return sym(NIL);}
+{INT}			{return sym(INT); }
+{FLOAT}			{return sym(FLOAT); }
+{EXP}			{return sym(EXP); }
 "not"			{return sym(NOT);}
 "false"			{return sym(FALSE);}
 "true"			{return sym(TRUE);}
 "function"		{return sym(FUNCTION);}
-"."				{return sym(DOT);}
+{DOT}				{return sym(DOT);}
 ","				{return sym(COMMA);}
 "while"			{return sym(WHILE);}
 "for"			{return sym(FOR);}
@@ -167,12 +171,10 @@ HexDigit 			= [0-9|a-f|A-F]
 "]"				{return sym(RBRACK);}
 "{"				{return sym(LCURLY);}
 "}"				{return sym(RCURLY);}
-{VAR_NAME}		{	System.out.println("varname");return sym(VAR_NAME); }
-{ASSIGN}		{	System.out.println("assign");return sym(ASSIGN); }
+":"				{return sym(COLON);}
+{VAR_NAME}		{return sym(VAR_NAME); }
+{ASSIGN}		{return sym(ASSIGN); }
 {SEMI}			{	return sym(SEMI); }
-{INT}			{	return sym(INT); }
-{FLOAT}			{	return sym(FLOAT); }
-{EXP}			{	return sym(EXP); }
 {HEX}			{	return sym(HEX); }
 {COMMENT}		{ System.out.println("Comment");}
 {LINE_COMMENT}	{ System.out.println("Line comment");}
