@@ -21,9 +21,9 @@ terminal		FUNCTION, WHILE,FOR,DO,END,REPEAT,UNTIL,IF,ELSEIF,THEN,ELSE,LOCAL,RETU
 
 non terminal	chunk, block, stat, statement, expr, exp, expressions, binop, unop, last_stat;
 non terminal	number, string, explist, funcbody, function, funcname, parlist, functioncall, fieldlist, fieldsep, field_member;
-non terminal	prefixexp, var,var_suffix,var_suffix_rec, name_and_args,args, varlist, var_recourse, var_or_exp, field, tableconstructor, explist_member, stat_recourse;
-non terminal	stat_recoursive, var_recoursive, exp_member, exp_recoursive, exp_member_recoursive , namelist;
-non terminal	return_stat, for_stat, if_stat, if_recoursive, dot_var_name;
+non terminal	prefixexp, var, args, varlist, var_recourse, field, tableconstructor, explist_member, stat_recourse;
+non terminal	stat_recoursive, name_rec, var_recoursive, exp_member, exp_recoursive, exp_member_recoursive , namelist;
+non terminal	return_stat,break_stat, for_stat, if_stat, if_recoursive, dot_var_name, varname;
 
 
 /*Precedenza operatori: 
@@ -48,6 +48,7 @@ precedence right EXPON;
 /*unità operativa di Lua, composto da una sequenza di statement seguiti opzionalmente da un ;*/
 chunk			::= stat_recoursive
 				| stat_recoursive last_stat
+				| last_stat
 				|
 				;
 stat_recoursive ::= stat
@@ -64,8 +65,8 @@ stat			::= varlist ASSIGN explist {:System.out.println("varlist assign explist")
 				| WHILE exp DO block END /*costrutti if while e repeat*/
 				| REPEAT block UNTIL exp
 				| if_stat
-				| for_stat
-				| FUNCTION funcname funcbody
+				| for_stat /*for statement*/
+				| FUNCTION funcname funcbody {:System.out.println("found Function stat"); :}
 				| LOCAL FUNCTION VAR_NAME funcbody
 				| LOCAL namelist
 				| LOCAL namelist ASSIGN explist
@@ -84,15 +85,26 @@ for_stat		::= FOR VAR_NAME ASSIGN exp COMMA exp DO block END {:System.out.printl
 				| FOR VAR_NAME ASSIGN exp COMMA exp COMMA exp DO block END
 				| FOR namelist IN explist DO block END {:System.out.println("for stat in");:}
 				;
-last_stat		::= RETURN | RETURN explist | BREAK
-				| RETURN SEMI | RETURN explist SEMI | BREAK SEMI
+/*
+Il last_stat è stato diviso in break_stat e return_stat per chiarezza
+di codice. Inoltre un break può stare solamente in un ciclo while o for
+o repeat until, ma risulta sintatticamente corretto mantenerlo all'interno
+di un if che non si trovi dentro un ciclo, anche se semanticamente senza
+significato, quindi si è scelto di poter mettere il break anche da solo come per il return. 
+*/
+last_stat		::= return_stat | break_stat;
+return_stat		::= RETURN {:System.out.println("return stat");:} 
+				| RETURN explist {:System.out.println("return with explist");:}
+				| RETURN SEMI | RETURN explist SEMI
 				;
-funcname		::= VAR_NAME dot_var_name
+break_stat		::= BREAK {:System.out.println("break stat");:}| BREAK SEMI;
+funcname		::= VAR_NAME:var dot_var_name {:System.out.println("funcname:" + var); :}
 				| VAR_NAME dot_var_name COLON VAR_NAME
 				;
 dot_var_name	::= | DOT VAR_NAME dot_var_name;
 varlist			::= var {:System.out.println("varlist->var");:} | var COMMA varlist;
-/*un singolo nome denota una variabile,
+/*
+un singolo nome denota una variabile,
 le parentesi quadre denotano l'indice di una tabella,
 una pillola sintattica per ritornare l'elemento di una tabella
 è tabella.nome che sta per ["nome"]
@@ -101,21 +113,21 @@ var				::= VAR_NAME {:System.out.println("found varname");:}
 				| prefixexp LBRACK exp RBRACK
 				| prefixexp DOT VAR_NAME {:System.out.println("found var->pref dot varname");:}
 				;
-namelist		::= VAR_NAME | COMMA VAR_NAME namelist;
+namelist		::= VAR_NAME {:System.out.println("namelist->varname"); :} | namelist COMMA VAR_NAME {:System.out.println("namelist"); :};
 explist			::= exp_recoursive {:System.out.println("found explist"); :};
-exp_recoursive	::= exp | exp COMMA exp_recoursive;
+exp_recoursive	::= exp | exp COMMA exp_recoursive {:System.out.println("exp_recoursive"); :};
 /*
 le espressioni che seguono servono per matchare: exp_member (binop exp_member)* e quindi binop exp_member va messo ricorsivo
 */
 exp				::= exp_member_recoursive;
-exp_member_recoursive ::= exp_member | exp_member binop exp_member_recoursive;
+exp_member_recoursive ::= exp_member | exp_member binop exp_member_recoursive {:System.out.println("found binop exp");:};
 exp_member		::= NIL | FALSE | TRUE
 				| number {:System.out.println("found number");:}
 				| string
 				| function
 				| prefixexp
 				| tableconstructor
-				| TRIDOT
+				| TRIDOT {:System.out.println("found ...");:}
 				| unop exp_member
 				;
 prefixexp		::= var {: System.out.println("prefixexp->var"); :} | functioncall {: System.out.println("prefixexp->functioncall"); :}; //manca | LPAREN exp RPAREN;
@@ -135,13 +147,13 @@ args			::= LPAREN RPAREN {:System.out.println("args ()"); :}
 				| tableconstructor
 				| string
 				;
-function		::= FUNCTION funcbody;
-funcbody		::= LPAREN RPAREN block END
-				| LPAREN parlist RPAREN block END
+function		::= FUNCTION funcbody {:System.out.println("function"); :};
+funcbody		::= LPAREN RPAREN block END {:System.out.println("functionbody");:}
+				| LPAREN parlist RPAREN block END {:System.out.println("functionbody with par");:}
 				;
-parlist			::= namelist
-				| namelist COMMA TRIDOT
-				| TRIDOT
+parlist			::= namelist {:System.out.println("found namelist in parlist");:}
+				| namelist COMMA TRIDOT {:System.out.println("found ... in parlist");:}
+				| TRIDOT {:System.out.println("found ... in parlist");:}
 				;
 tableconstructor ::= LCURLY RCURLY | LCURLY fieldlist RCURLY {: System.out.println("table constructor");:};
 fieldlist		::= field {:System.out.println("found a field"); :} 
@@ -153,15 +165,14 @@ field			::= LBRACK exp RBRACK ASSIGN exp
 				;
 fieldsep		::= SEMI | COMMA;
 binop 			::= PLUS | MINUS | MULT | DIVIDE | EXPON | MOD | DOTDOT
-		 		| MINOR | MINEQ | AND | OR
+		 		|MINOR| MINEQ| MAIOR| MAIEQ| EQ| NEQ| AND| OR
 		 		;
 unop		::= MINUS | NOT | SHARP; 
 number		::= EXP {:System.out.println("found EXP"); :} 
 			| FLOAT {:System.out.println("found FLOAT"); :} 
-			| INT {:System.out.println("found INT"); :};
+			| INT {:System.out.println("found INT"); :}
+			;
 string		::= NORMALSTRING | CHARSTRING|LONGSTRING;
-
-
 /*                      
 comment				::= COMMENT
                       | LINE_COMMENT

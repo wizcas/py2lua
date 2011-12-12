@@ -1,1 +1,9 @@
-(foo[[pippo]])
+function basicSerialize (o)
+  if type(o) == "number" then
+    return tostring(o)
+  elseif type(0) == "float" then
+    	return "pippo"
+  else
+    return string.format("%q", o)
+  end
+end
