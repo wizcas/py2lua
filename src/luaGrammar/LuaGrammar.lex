@@ -49,7 +49,8 @@ import static luaGrammar.LuaGrammarSym.*;
 	}
 %}
 
-VAR_NAME 	= [a-z|A-Z|_] [a-z|A-Z|_|0-9]*
+/*VAR_NAME 	= [a-z|A-Z|_] [a-z|A-Z|_|0-9]**/
+VAR_NAME	= [a-zA-Z_][a-zA-Z0-9_]*
 ASSIGN		= =
 PLUS		= "+"
 MINUS		= "-"
@@ -71,10 +72,10 @@ INT			= [0-9]+
 FLOAT		= ({INT}({DOT}{INT})?)
 EXP			= ({INT}| {FLOAT})[E|e]["-"]?{INT}
 HEX			= 0[xX][0-9A-Fa-f]+
-LINE_COMMENT = \-\- ([^\n|\r])*
+LINE_COMMENT = \-\-([^\n|\r])*
 COMMENT		= \-\-\[\[(.|\n)*\]\]
-NEWLINE		= \r | \n |\r\n
-WS  		=  [\ |\t|\u000C]
+NEWLINE		= \r|\n|\r\n
+WS  		= \ |\t|\u000C
 SEMI		= ;
 DOT			= \.
 
