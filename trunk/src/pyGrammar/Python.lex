@@ -21,6 +21,10 @@ import static pyGrammar.PythonSym.*;
 %cupsym pyGrammar.PythonSym
 %cup
 
+%eofval{ 
+	return sym(EOF); 
+%eofval}
+
 %init{
 	// TODO: code that goes to constructor
 %init}
@@ -47,12 +51,45 @@ import static pyGrammar.PythonSym.*;
 
 NEWLINE		=	\r|\n|\r\n
 WHITESPACE	=	[ \t]
-NAME        =   [a-zA-Z_][a-zA-Z0-9]+
+//IDENTIFIER  =   [a-zA-Z_][a-zA-Z0-9_]*
+
+
 
 %%
 
 {NEWLINE}		{ System.out.println("newline"); return sym(NEWLINE); }
 {WHITESPACE}	{ System.out.println("whitespace"); }
-{NAME}          { System.out.println("name"); return sym(NAME); }
+//{IDENTIFIER}    { System.out.println("name"); return sym(IDENTIFIER); }
 
-<<EOF>>			{ System.out.println("end of file"); return sym(EOF); }
+/* Keywords */
+"and"       { return sym(AND); }
+"as"        { return sym(AS); }
+"assert"    { return sym(ASSERT); }
+"break"     { return sym(BREAK); }
+"class"     { return sym(CLASS); }
+"continue"  { return sym(CONTINUE); }
+"def"       { return sym(DEF); }
+"del"       { return sym(DEL); }
+"elif"      { return sym(ELIF); }
+"else"      { return sym(ELSE); }
+"except"    { return sym(EXCEPT); }
+"exec"      { return sym(EXEC); }
+"finally"   { return sym(FINALLY); }
+"for"       { return sym(FOR); }
+"from"      { return sym(FROM); }
+"global"    { return sym(GLOBAL); }
+"if"        { return sym(IF); }
+"import"    { return sym(IMPORT); }
+"in"        { return sym(IN); }
+"is"        { return sym(IS); }
+"lambda"    { return sym(LAMBDA); }
+"not"       { return sym(NOT); }
+"or"        { return sym(OR); }
+"pass"      { return sym(PASS); }
+"print"     { return sym(PRINT); }
+"raise"     { return sym(RAISE); }
+"return"    { return sym(RETURN); }
+"try"       { return sym(TRY); }
+"while"     { return sym(WHILE); }
+"with"      { return sym(WITH); }
+"yield"     { return sym(YIELD); }

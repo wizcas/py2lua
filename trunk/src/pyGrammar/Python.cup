@@ -11,17 +11,22 @@ action code
 {:
 :}
 
-terminal		NEWLINE, NAME;
+terminal        AND, AS, ASSERT, BREAK, CLASS, CONTINUE;
+terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
+terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
+terminal        IN, IS, LAMBDA, NOT, OR, PASS;
+terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH;
+terminal        YIELD;
+terminal        NAME, NEWLINE;
 
-non terminal	file_input, file_input_begin, stmt;
+non terminal	file_input, file_input_recoursive, stmt;
 
 
-file_input         ::= file_input_begin;
+file_input                ::= file_input_recoursive;
 
-file_input_begin   ::= NEWLINE file_input_begin
-					 | stmt file_input_begin
-					 | stmt
-					 | NEWLINE
-					 ;
+file_input_recoursive     ::= NEWLINE file_input_recoursive
+                            | stmt file_input_recoursive
+                            |
+                            ;
 
-stmt               ::= NAME;
+stmt                      ::= NAME;
