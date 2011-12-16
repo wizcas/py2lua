@@ -17,9 +17,10 @@ terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
 terminal        IN, IS, LAMBDA, NOT, OR, PASS;
 terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH;
 terminal        YIELD;
+terminal		STRING, DECIMAL, LONGINT, HEX, OCT, BIN;
 terminal        NAME, NEWLINE;
 
-non terminal	file_input, file_input_recoursive, stmt;
+non terminal	file_input, file_input_recoursive, stmt, number;
 
 
 file_input                ::= file_input_recoursive;
@@ -29,4 +30,6 @@ file_input_recoursive     ::= NEWLINE file_input_recoursive
                             |
                             ;
 
-stmt                      ::= NAME;
+stmt                    ::= number |STRING ;
+number					::= LONGINT | DECIMAL | HEX | OCT | BIN;
+

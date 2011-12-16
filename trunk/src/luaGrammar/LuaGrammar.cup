@@ -171,6 +171,7 @@ unop		::= MINUS | NOT | SHARP;
 number		::= EXP {:System.out.println("found EXP"); :} 
 			| FLOAT {:System.out.println("found FLOAT"); :} 
 			| INT {:System.out.println("found INT"); :}
+			| HEX {:System.out.println("found HEX"); :}
 			;
 string		::= NORMALSTRING | CHARSTRING|LONGSTRING;
 /*                      
