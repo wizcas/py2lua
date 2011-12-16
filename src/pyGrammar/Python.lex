@@ -71,10 +71,23 @@ escapeseq       =  \\ [a-zA-Z0-9] /*any ASCII character*/
 
 /* Integer and Long Integer */
 LONGINT    	   	=  ({DECIMAL}|{OCT}|{HEX}|{BIN})[lL]
-DECIMAL			=  [1-9] [0-9]* | 0
+DECIMAL			=  [1-9] {digit}* | 0
 OCT				=  0[oO][0-7]+ | 0[0-7]+
 HEX				=  0[xX][0-9a-fA-F]+
 BIN				=  0[bB][01]+
+
+/*Floating point*/
+FLOAT			=  {pointfloat} | {exponentfloat}
+pointfloat    	=  {intpart}? {fraction} | {intpart} \.
+exponentfloat 	=  ({intpart} | {pointfloat}) {exponent}
+intpart       	=  {digit}+
+fraction      	=  \.{digit}+
+exponent      	=  [eE]([\+\-])? {digit}+
+
+/*Imaginary number*/
+IMAGNUM 		=  ({FLOAT}|{intpart})[jJ]
+
+digit			= [0-9]
 
 %%
 
@@ -115,8 +128,10 @@ BIN				=  0[bB][01]+
 "with"      { return sym(WITH); }
 "yield"     { return sym(YIELD); }
 {STRING}	{ System.out.println("found string"); return sym(STRING);}
+{FLOAT}		{ System.out.println("found float"); return sym(FLOAT);}
+{IMAGNUM}	{ System.out.println("found imaginary number"); return sym(IMAGNUM);}
 {LONGINT}	{ System.out.println("found longinteger"); return sym(LONGINT);}
-{DECIMAL}		{ System.out.println("found decimal"); return sym(DECIMAL);}
+{DECIMAL}	{ System.out.println("found decimal"); return sym(DECIMAL);}
 {OCT}		{ System.out.println("found oct"); return sym(OCT);}
 {HEX}		{ System.out.println("found hex"); return sym(HEX);}
 {BIN}		{ System.out.println("found bin"); return sym(BIN);}
