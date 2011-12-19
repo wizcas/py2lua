@@ -53,11 +53,10 @@ NEWLINE		=	\r|\n|\r\n
 WHITESPACE	=	[ \t]
 NAME  		=   [a-zA-Z_][a-zA-Z0-9_]*
 COMMENT		= 	#([^\n|\r])*
-STRING		= 	{stringliteral}
 
 
 /* Stringhe */
-stringliteral   =  ({stringprefix})?({shortstring} | {longstring})
+STRING  		=  ({stringprefix})?({shortstring} | {longstring})
 stringprefix    =  r | u | ur | R | U | UR | Ur | uR
                      | b | B | br | Br | bR | BR
 shortstring     =  "'"{shortstringitem}*"'" | \"{shortstringitem}*\"
@@ -88,6 +87,23 @@ exponent      	=  [eE]([\+\-])? {digit}+
 IMAGNUM 		=  ({FLOAT}|{intpart})[jJ]
 
 digit			= [0-9]
+
+/*Simbols*/
+ASSIGN		= =
+PLUS		= "+"
+MINUS		= "-"
+MULT		= "*"
+DIVIDE		= "/"
+MOD			= %
+EXPON		= \^
+MINOR		= <
+MINEQ		= "<="
+MAIOR		= >
+MAIEQ		= ">="
+EQ			= "=="
+NEQ			= "!="
+SEMI		= ";"
+
 
 %%
 
@@ -127,6 +143,50 @@ digit			= [0-9]
 "while"     { return sym(WHILE); }
 "with"      { return sym(WITH); }
 "yield"     { return sym(YIELD); }
+/*Operators*/
+{PLUS}			{return sym(PLUS);}
+{MINUS}			{return sym(MINUS);}
+{MULT}			{return sym(MULT);}
+"**"			{return sym(EXPON);}
+{DIVIDE}		{return sym(DIVIDE);}
+{MOD}			{return sym(MOD);}
+{EXPON}			{return sym(EXPON);}
+{MINOR}			{return sym(MINOR);}
+{MINEQ}			{return sym(MINEQ);}
+{MAIOR}			{return sym(MAIOR);}
+{MAIEQ}			{return sym(MAIEQ);}
+{EQ}			{return sym(EQ);}
+{NEQ}			{return sym(NEQ);}
+"~"				{return sym(TILDE);}
+"&"				{return sym(AND);}
+"|"				{return sym(PIPE);}
+"<<"			{return sym(LSHIFT);}
+">>"			{return sym(RSHIFT);}
+/*Delimiters*/
+"."				{return sym(DOT);}
+","				{return sym(COMMA);}
+"("				{return sym(LPAREN);}
+")"				{return sym(RPAREN);}
+"["				{return sym(LBRACK);}
+"]"				{return sym(RBRACK);}
+"{"				{return sym(LCURLY);}
+"}"				{return sym(RCURLY);}
+":"				{return sym(COLON);}
+{ASSIGN}		{return sym(ASSIGN); }
+{SEMI}			{return sym(SEMI);}
+"@"				{return sym(AT);}
+"+="			{return sym(PLUSEQ);}
+"-="			{return sym(MINUSEQ);}
+"*="			{return sym(MULTEQ);}
+"/="			{return sym(DIVEQ);}
+"%="			{return sym(MODEQ);}
+"&="			{return sym(ANDEQ);}
+"|="			{return sym(OREQ);}
+"^="			{return sym(EXPEQ);}
+">>="			{return sym(RSEQ);}
+"<<="			{return sym(LSEQ);}
+"**="			{return sym(EXPEQ);}
+"..."			{return sym(TRIDOT);}
 {STRING}	{ System.out.println("found string"); return sym(STRING);}
 {FLOAT}		{ System.out.println("found float"); return sym(FLOAT);}
 {IMAGNUM}	{ System.out.println("found imaginary number"); return sym(IMAGNUM);}
