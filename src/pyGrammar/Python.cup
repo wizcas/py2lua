@@ -16,10 +16,19 @@ terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
 terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
 terminal        IN, IS, LAMBDA, NOT, OR, PASS;
 terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH;
-terminal        YIELD;
+terminal        YIELD, TRIDOT;
+terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
+terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
+terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
 terminal		STRING, DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
 terminal        NAME, NEWLINE;
 
+non terminal	atom, literal, enclosure,expression, expression_list, exp_recoursive;
+non terminal	parenth_form, list_display, list_comprehension, list_for, old_expression_list, old_expression, list_iter, list_if;
+non terminal	generator_expression, dict_display, set_display, string_conversion, yield_atom, target_list, or_test, old_lambda_form;
+non terminal	comprehension, comp_for, comp_iter, comp_if, expression_nocond;
+non terminal	key_datum_list, key_datum,dict_comprehension, yield_expression, attributeref, primary, subscription, slicing, call;
+non terminal	long_slice,slice_list,short_slice,simple_slicing,extended_slicing,slice_item,proper_slice,lower_bound,upper_bound,stride,ellipsis;
 non terminal	file_input, file_input_recoursive, stmt, number;
 
 
@@ -29,7 +38,74 @@ file_input_recoursive     ::= NEWLINE file_input_recoursive
                             | stmt file_input_recoursive
                             |
                             ;
+stmt                    ::= atom ;
+/*
+Atoms elementi base delle espressioni. I più semplici
+sono identificatori e letterali, anche le espressioni racchiuse
+tra parentesi sono considerate atoms.
+*/
+atom					::= NAME | literal | enclosure;
+enclosure 				::=  parenth_form | list_display
+	               		| generator_expression | dict_display | set_display
+	               		| yield_atom; //string_conversion non so come si faccia, perchè non trovo le reverse quotes
+/*lista opzionale di espressioni*/
+parenth_form 			::= LPAREN RPAREN | LPAREN expression_list RPAREN;
+expression_list			::= exp_recoursive {:System.out.println("found explist"); :};
+exp_recoursive			::= expression | expression COMMA exp_recoursive {:System.out.println("exp_recoursive"); :};
 
-stmt                    ::= number |STRING ;
-number					::= FLOAT |IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN;
+/*list display è una serie di espressioni possibilmente vuote racchiuse in parentesi quadre*/
+list_display        ::=  LBRACK RBRACK | LBRACK expression_list RBRACK | LBRACK list_comprehension RBRACK;
+list_comprehension  ::=  expression list_for;
+list_for            ::=  FOR target_list IN old_expression_list | FOR target_list IN old_expression_list list_iter ;
+old_expression      ::=  or_test | old_lambda_form;
+old_expression_list ::=  old_expression | old_expression COMMA old_expression_list;
+list_iter           ::=  list_for | list_if;
+list_if             ::=  IF old_expression | IF old_expression list_iter;
 
+/*
+Per costruire un insieme o un dizionario Python fornisce una sintassi speciale chiamata "displays".
+Ciascuno dei quali in due gusti: i contenuti sono elencati esplicitamente, oppure
+essi sono calcolato tramite un set di ciclo e di istruzioni di filtraggio chiamate comprehension.
+La comprehension consiste di una singola espressione seguita da almeno una clausa for e uno o più costrutti for o if
+*/
+comprehension ::=  expression comp_for;
+comp_for      ::=  FOR target_list IN or_test | FOR target_list IN or_test comp_iter;
+comp_iter     ::=  comp_for | comp_if;
+comp_if       ::=  IF expression_nocond | IF expression_nocond comp_iter;
+
+generator_expression ::=  LPAREN expression comp_for RPAREN;
+/*
+Serie di coppie chiave-valore tra parentesi graffe
+*/
+dict_display       	::=  LCURLY RCURLY | LCURLY key_datum_list RCURLY | LCURLY dict_comprehension RCURLY ;
+key_datum_list     	::=  key_datum | key_datum COMMA key_datum_list | key_datum COMMA;
+key_datum          	::=  expression COLON expression ;
+dict_comprehension 	::=  expression COLON expression comp_for;
+
+yield_atom       	::=  LPAREN yield_expression RPAREN;
+yield_expression 	::=  YIELD | YIELD expression_list;
+
+/*Un set display è denotato dalle parentesi graffe, ma a differenza del dizionario, non vi è la virgola tra chiave e valore*/
+set_display 		::=  LCURLY expression_list RCURLY | LCURLY comprehension RCURLY;
+
+/*Le primaries rappresentano le operazioni più strettamente limitate del linguagio*/
+primary				::= atom | attributeref | subscription | slicing | call;
+attributeref 		::=  primary DOT NAME;
+/*una subscription seleziona un oggetto di una sequenza o di un dizionario*/
+subscription ::=  primary LBRACK expression_list RBRACK;
+/*Uno slicing seleziona un intervallo di oggetti in una sequenza*/
+slicing          	::=  simple_slicing | extended_slicing;
+simple_slicing   	::=  primary LBRACK short_slice RBRACK;
+extended_slicing 	::=  primary LBRACK slice_list RBRACK;
+//slice_list       	::=  slice_item ("," slice_item)* [","]
+slice_item       	::=  expression | proper_slice | ellipsis;
+proper_slice     	::=  short_slice | long_slice;
+//short_slice      	::=  [lower_bound] COLON [upper_bound]
+//long_slice       	::=  short_slice COLON [stride]
+lower_bound      	::=  expression;
+upper_bound      	::=  expression;
+stride           	::=  expression;
+ellipsis         	::=  TRIDOT;
+
+literal					::= STRING | number;
+number					::= FLOAT |IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN ;
