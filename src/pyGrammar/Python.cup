@@ -16,7 +16,7 @@ terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
 terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
 terminal        IN, IS, LAMBDA, NOT, OR, PASS;
 terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH;
-terminal        YIELD, TRIDOT;
+terminal        YIELD, TRIDOT, DIVDIV;
 terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
 terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
 terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
@@ -29,6 +29,8 @@ non terminal	generator_expression, dict_display, set_display, string_conversion,
 non terminal	comprehension, comp_for, comp_iter, comp_if, expression_nocond;
 non terminal	key_datum_list, key_datum,dict_comprehension, yield_expression, attributeref, primary, subscription, slicing, call;
 non terminal	long_slice,slice_list,short_slice,simple_slicing,extended_slicing,slice_item,proper_slice,lower_bound,upper_bound,stride,ellipsis;
+non terminal	argument_list, positional_arguments, keyword_arguments, keyword_item, genexpr_for;
+non terminal	power, u_expr, m_expr, a_expr;
 non terminal	file_input, file_input_recoursive, stmt, number;
 
 
@@ -45,6 +47,7 @@ sono identificatori e letterali, anche le espressioni racchiuse
 tra parentesi sono considerate atoms.
 */
 atom					::= NAME | literal | enclosure;
+literal					::= STRING | number;
 enclosure 				::=  parenth_form | list_display
 	               		| generator_expression | dict_display | set_display
 	               		| yield_atom; //string_conversion non so come si faccia, perchè non trovo le reverse quotes
@@ -97,15 +100,52 @@ subscription ::=  primary LBRACK expression_list RBRACK;
 slicing          	::=  simple_slicing | extended_slicing;
 simple_slicing   	::=  primary LBRACK short_slice RBRACK;
 extended_slicing 	::=  primary LBRACK slice_list RBRACK;
-//slice_list       	::=  slice_item ("," slice_item)* [","]
+slice_list			::=	 slice_item | slice_item COMMA | slice_list;//slice_list       	::=  slice_item ("," slice_item)* [","]
 slice_item       	::=  expression | proper_slice | ellipsis;
 proper_slice     	::=  short_slice | long_slice;
-//short_slice      	::=  [lower_bound] COLON [upper_bound]
-//long_slice       	::=  short_slice COLON [stride]
+short_slice			::=  lower_bound COLON upper_bound; //short_slice      	::=  [lower_bound] COLON [upper_bound]
+long_slice       	::=  short_slice COLON | short_slice COLON stride;
 lower_bound      	::=  expression;
 upper_bound      	::=  expression;
 stride           	::=  expression;
 ellipsis         	::=  TRIDOT;
 
-literal					::= STRING | number;
+/*Calls serve per chiamare gli oggetti come funzioni con una serie di parametri*/
+//call                 ::=  primary "(" [argument_list [","] | expression genexpr_for] ")"
+call                 ::=  primary LPAREN RPAREN 
+						| primary LPAREN argument_list RPAREN 
+						| primary LPAREN argument_list COMMA RPAREN 
+						| primary LPAREN expression genexpr_for RPAREN;
+
+/*
+argument_list    ::=  positional_arguments ["," keyword_arguments] ["," "*" expression] ["," keyword_arguments] ["," "**" expression]
+                          | keyword_arguments ["," "*" expression]
+                            ["," "**" expression]
+                          | "*" expression ["," "*" expression] ["," "**" expression]
+                          | "**" expression
+*/
+
+argument_list        ::=  positional_arguments
+						| positional_arguments COMMA keyword_arguments
+						| positional_arguments COMMA MULT expression
+						| positional_arguments COMMA keyword_arguments COMMA MULT expression COMMA keyword_arguments
+						| positional_arguments COMMA EXPON expression
+						| positional_arguments COMMA keyword_arguments COMMA MULT expression COMMA keyword_arguments COMMA EXPON expression
+						| keyword_arguments | keyword_arguments COMMA MULT expression | keyword_arguments COMMA EXPON expression | keyword_arguments COMMA MULT expression COMMA EXPON expression
+						| MULT expression | MULT expression COMMA MULT expression | MULT expression COMMA EXPON expression | MULT expression COMMA MULT expression COMMA EXPON expression
+						| EXPON expression
+						;
+positional_arguments ::=  expression | positional_arguments COMMA expression;
+keyword_arguments    ::=  keyword_item | keyword_arguments COMMA keyword_item;
+keyword_item         ::=  NAME ASSIGN expression;
+
+/*Operatori di elevamento a potenza*/
+power				::= primary | primary EXPON u_expr;
+/*operatori unari*/
+u_expr				::= power | MINUS u_expr | PLUS u_expr | TILDE u_expr;
+/*Operatori binari*/
+m_expr ::=  u_expr | m_expr MULT u_expr | m_expr DIVDIV u_expr | m_expr DIVIDE u_expr
+            | m_expr MOD u_expr;
+a_expr ::=  m_expr | a_expr PLUS m_expr | a_expr MINUS m_expr;
+
 number					::= FLOAT |IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN ;

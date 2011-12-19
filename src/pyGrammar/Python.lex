@@ -94,6 +94,7 @@ PLUS		= "+"
 MINUS		= "-"
 MULT		= "*"
 DIVIDE		= "/"
+DIVDIV		= "//"
 MOD			= %
 EXPON		= \^
 MINOR		= <
@@ -149,6 +150,7 @@ SEMI		= ";"
 {MULT}			{return sym(MULT);}
 "**"			{return sym(EXPON);}
 {DIVIDE}		{return sym(DIVIDE);}
+{DIVDIV}		{return sym(DIVDIV);}
 {MOD}			{return sym(MOD);}
 {EXPON}			{return sym(EXPON);}
 {MINOR}			{return sym(MINOR);}
