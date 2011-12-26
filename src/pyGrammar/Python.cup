@@ -21,7 +21,7 @@ terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ
 terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
 terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
 terminal		STRING, DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
-terminal        NAME, NEWLINE;
+terminal        NAME, NEWLINE, MULTMULT;
 
 non terminal	atom, literal, enclosure,expression, expression_list, exp_recoursive;
 non terminal	parenth_form, list_display, list_comprehension, list_for, old_expression_list, old_expression, list_iter, list_if;
@@ -30,8 +30,11 @@ non terminal	comprehension, comp_for, comp_iter, comp_if, expression_nocond;
 non terminal	key_datum_list, key_datum,dict_comprehension, yield_expression, attributeref, primary, subscription, slicing, call;
 non terminal	long_slice,slice_list,short_slice,simple_slicing,extended_slicing,slice_item,proper_slice,lower_bound,upper_bound,stride,ellipsis;
 non terminal	argument_list, positional_arguments, keyword_arguments, keyword_item, genexpr_for;
-non terminal	power, u_expr, m_expr, a_expr;
-non terminal	file_input, file_input_recoursive, stmt, number;
+non terminal	power, u_expr, m_expr, a_expr, shift_expr, and_expr, xor_expr, or_expr, and_test, not_test;
+non terminal	file_input, file_input_recoursive, stmt, number, parameter_list, target;
+non terminal	comp_recoursive, comparison, comp_operator, conditional_expression, lambda_form, target_list_recoursive;
+non terminal	simple_stmt, compound_stmt, del_stmt, print_stmt, return_stmt, yield_stmt, raise_stmt, continue_stmt, global_stmt;
+non terminal	expression_stmt, assert_stmt, assignment_stmt, augmented_assignment_stmt, pass_stmt, break_stmt, import_stmt, exec_stmt;
 
 
 file_input                ::= file_input_recoursive;
@@ -41,6 +44,42 @@ file_input_recoursive     ::= NEWLINE file_input_recoursive
                             |
                             ;
 stmt                    ::= atom ;
+
+simple_stmt				::= expression_stmt
+                 			| assert_stmt
+		                 	| assignment_stmt
+		                 	| augmented_assignment_stmt
+		                	| pass_stmt
+		                 	| del_stmt
+		                 	| print_stmt
+		                 	| return_stmt
+			                | yield_stmt
+			                | raise_stmt
+			                | break_stmt
+			                | continue_stmt
+			                | import_stmt
+			                | global_stmt
+			                | exec_stmt
+			                ;
+
+/*Statements delle espressioni*/
+expression_stmt			::= expression_list;
+/*Assignment statement*/
+assignment_stmt			::= target_list ASSIGN expression_list
+						| target_list ASSIGN yield_expression
+						| target_list_recoursive expression_list
+						| target_list_recoursive yield_expression
+						;
+target_list_recoursive	::= target_list ASSIGN | target_list ASSIGN target_list_recoursive;
+target_list				::= target | target COMMA target_list;
+
+/*Operazioni booleane*/
+or_test			::= and_test | or_test OR and_test;
+and_test		::= not_test | and_test AND not_test;
+//not_test		::= NOT not_test | comparison;
+comparison			::= or_expr | or_expr comp_operator comparison;
+comp_operator 		::=  MINOR | MAIOR | EQ | MAIEQ | MINEQ | NEQ
+                   		| IS | IS NOT | IN | NOT IN;           
 /*
 Atoms elementi base delle espressioni. I più semplici
 sono identificatori e letterali, anche le espressioni racchiuse
@@ -54,7 +93,7 @@ enclosure 				::=  parenth_form | list_display
 /*lista opzionale di espressioni*/
 parenth_form 			::= LPAREN RPAREN | LPAREN expression_list RPAREN;
 expression_list			::= exp_recoursive {:System.out.println("found explist"); :};
-exp_recoursive			::= expression | expression COMMA exp_recoursive {:System.out.println("exp_recoursive"); :};
+exp_recoursive			::= expression | expression COMMA exp_recoursive {:System.out.println("exp_recoursive"); :};    
 
 /*list display è una serie di espressioni possibilmente vuote racchiuse in parentesi quadre*/
 list_display        ::=  LBRACK RBRACK | LBRACK expression_list RBRACK | LBRACK list_comprehension RBRACK;
@@ -93,7 +132,11 @@ set_display 		::=  LCURLY expression_list RCURLY | LCURLY comprehension RCURLY;
 
 /*Le primaries rappresentano le operazioni più strettamente limitate del linguagio*/
 primary				::= atom | attributeref | subscription | slicing | call;
-attributeref 		::=  primary DOT NAME;
+attributeref 		::=  atom DOT NAME
+					| subscription DOT NAME
+					| slicing DOT NAME
+					| call DOT NAME
+					;
 /*una subscription seleziona un oggetto di una sequenza o di un dizionario*/
 subscription ::=  primary LBRACK expression_list RBRACK;
 /*Uno slicing seleziona un intervallo di oggetti in una sequenza*/
@@ -129,23 +172,49 @@ argument_list        ::=  positional_arguments
 						| positional_arguments COMMA keyword_arguments
 						| positional_arguments COMMA MULT expression
 						| positional_arguments COMMA keyword_arguments COMMA MULT expression COMMA keyword_arguments
-						| positional_arguments COMMA EXPON expression
-						| positional_arguments COMMA keyword_arguments COMMA MULT expression COMMA keyword_arguments COMMA EXPON expression
-						| keyword_arguments | keyword_arguments COMMA MULT expression | keyword_arguments COMMA EXPON expression | keyword_arguments COMMA MULT expression COMMA EXPON expression
-						| MULT expression | MULT expression COMMA MULT expression | MULT expression COMMA EXPON expression | MULT expression COMMA MULT expression COMMA EXPON expression
-						| EXPON expression
+						| positional_arguments COMMA MULTMULT expression
+						| positional_arguments COMMA keyword_arguments COMMA MULT expression COMMA keyword_arguments COMMA MULTMULT expression
+						| keyword_arguments | keyword_arguments COMMA MULT expression | keyword_arguments COMMA MULTMULT expression | keyword_arguments COMMA MULT expression COMMA MULTMULT expression
+						| MULT expression | MULT expression COMMA MULT expression | MULT expression COMMA MULTMULT expression | MULT expression COMMA MULT expression COMMA MULTMULT expression
+						| MULTMULT expression
 						;
-positional_arguments ::=  expression | positional_arguments COMMA expression;
-keyword_arguments    ::=  keyword_item | keyword_arguments COMMA keyword_item;
+positional_arguments ::=  expression | expression COMMA positional_arguments;
+keyword_arguments    ::=  keyword_item | keyword_item COMMA keyword_arguments;
 keyword_item         ::=  NAME ASSIGN expression;
 
 /*Operatori di elevamento a potenza*/
 power				::= primary | primary EXPON u_expr;
+/*Operazioni di shifting*/
+shift_expr			::= a_expr | shift_expr LPAREN LSHIFT RPAREN a_expr
+						| shift_expr LPAREN RSHIFT RPAREN a_expr
+						;
+						
+/*Operazioni condizionali*/
+conditional_expression	::= or_test	| or_test IF or_test ELSE expression;
+
+expression				::= conditional_expression | lambda_form;	
+lambda_form				::= LAMBDA COLON expression
+							| LAMBDA parameter_list COLON expression;
+old_lambda_form 		::= LAMBDA COLON old_expression
+							| LAMBDA parameter_list COLON old_expression;
+							
+target					::= NAME
+						| LPAREN target_list RPAREN
+						| LBRACK target_list RBRACK
+						//| attributeref
+						//| subscription
+						//| slicing
+						;
+
+/*Operazioni binarie bit a bit*/
+and_expr			::= shift_expr | and_expr AND shift_expr;
+xor_expr			::= and_expr | xor_expr EXPON and_expr;
+or_expr				::= xor_expr | or_expr OR xor_expr;    		
 /*operatori unari*/
 u_expr				::= power | MINUS u_expr | PLUS u_expr | TILDE u_expr;
 /*Operatori binari*/
-m_expr ::=  u_expr | m_expr MULT u_expr | m_expr DIVDIV u_expr | m_expr DIVIDE u_expr
-            | m_expr MOD u_expr;
-a_expr ::=  m_expr | a_expr PLUS m_expr | a_expr MINUS m_expr;
+m_expr 			::=  u_expr | m_expr MULT u_expr | m_expr DIVDIV u_expr | m_expr DIVIDE u_expr
+            		| m_expr MOD u_expr;
+a_expr 			::=  m_expr | a_expr PLUS m_expr | a_expr MINUS m_expr;
 
 number					::= FLOAT |IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN ;
