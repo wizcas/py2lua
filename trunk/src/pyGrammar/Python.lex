@@ -148,7 +148,7 @@ SEMI		= ";"
 {PLUS}			{return sym(PLUS);}
 {MINUS}			{return sym(MINUS);}
 {MULT}			{return sym(MULT);}
-"**"			{return sym(EXPON);}
+"**"			{return sym(MULTMULT);}
 {DIVIDE}		{return sym(DIVIDE);}
 {DIVDIV}		{return sym(DIVDIV);}
 {MOD}			{return sym(MOD);}
