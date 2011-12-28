@@ -21,20 +21,25 @@ terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ
 terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
 terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
 terminal		STRING, DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
-terminal        NAME, NEWLINE, MULTMULT;
+terminal        NAME, NEWLINE, MULTMULT, INDENT, DEDENT;
 
-non terminal	atom, literal, enclosure,expression, expression_list, exp_recoursive;
-non terminal	parenth_form, list_display, list_comprehension, list_for, old_expression_list, old_expression, list_iter, list_if;
-non terminal	generator_expression, dict_display, set_display, string_conversion, yield_atom, target_list, or_test, old_lambda_form;
-non terminal	comprehension, comp_for, comp_iter, comp_if, expression_nocond;
-non terminal	key_datum_list, key_datum,dict_comprehension, yield_expression, attributeref, primary, subscription, slicing, call;
-non terminal	long_slice,slice_list,short_slice,simple_slicing,extended_slicing,slice_item,proper_slice,lower_bound,upper_bound,stride,ellipsis;
-non terminal	argument_list, positional_arguments, keyword_arguments, keyword_item, genexpr_for;
-non terminal	power, u_expr, m_expr, a_expr, shift_expr, and_expr, xor_expr, or_expr, and_test, not_test;
-non terminal	file_input, file_input_recoursive, stmt, number, parameter_list, target;
-non terminal	comp_recoursive, comparison, comp_operator, conditional_expression, lambda_form, target_list_recoursive;
-non terminal	simple_stmt, compound_stmt, del_stmt, print_stmt, return_stmt, yield_stmt, raise_stmt, continue_stmt, global_stmt;
-non terminal	expression_stmt, assert_stmt, assignment_stmt, augmented_assignment_stmt, pass_stmt, break_stmt, import_stmt, exec_stmt;
+non terminal	atom, literal;
+non terminal	list_for, list_iter, list_if;
+non terminal	or_test;
+non terminal	comp_for, comp_iter, comp_if;
+non terminal	power, shift_expr, and_expr, xor_expr, and_test, not_test;
+non terminal	file_input, file_input_recoursive, stmt, number, stat_recoursive;
+non terminal	comparison, comp_operator;
+non terminal	simple_stmt, compound_stmt, del_stmt, print_stmt, return_stmt, raise_stmt, flow_stmt, global_stmt, expr_stmt;
+non terminal	assert_stmt, pass_stmt, import_stmt, exec_stmt;
+non terminal	assign_testlist_rec, assign_yield_rec, testlist, augassign, yield_expr;
+non terminal	test_recoursive, test, exprlist, dotted_name, import_as_names, dotted_as_name, name_recoursive;
+non terminal	import_name, import_from, dotted_as_names, dot_recoursive, import_as_name, except_clause_recoursive, except_clause;
+non terminal	expr, if_stmt, while_stmt, for_stmt, with_stmt,try_stmt, funcdef, classdef, decorated, else_recoursive, suite;
+non terminal	with_item, with_item_recoursive, stmt_recoursive, lambdef;
+non terminal	arith_expr, term, factor, trailer_recoursive, trailer, testlist_comp, listmaker,dictorsetmaker, varargslist, arglist, subscriptlist, subscript, sliceop, test_comma_colon_rec;
+non terminal	argument, argument_rec, testlist_safe, old_test, old_lambdef, decorator, decorators, parameters;
+non terminal	fpdef_recoursive, fpdef, fplist, comma_test_rec, dictmakerclause, setmakerclause;
 
 
 file_input                ::= file_input_recoursive;
@@ -43,178 +48,252 @@ file_input_recoursive     ::= NEWLINE file_input_recoursive
                             | stmt file_input_recoursive
                             |
                             ;
-stmt                    ::= atom ;
 
-simple_stmt				::= expression_stmt
+decorator				::= AT dotted_name NEWLINE 
+							| AT dotted_name LPAREN RPAREN NEWLINE
+							| AT dotted_name LPAREN arglist RPAREN NEWLINE
+							;
+decorators				::= decorator | decorator decorators;
+decorated				::= decorators classdef | decorators funcdef;
+funcdef					::= DEF NAME parameters COLON suite;
+
+parameters				::= LPAREN varargslist RPAREN;
+/*
+varargslist: ((fpdef ['=' test] ',')*
+              ('*' NAME [',' '**' NAME] | '**' NAME) |
+              fpdef ['=' test] (',' fpdef ['=' test])* [','])
+*/
+              
+varargslist				::= MULT NAME 
+							| MULT NAME COMMA MULTMULT NAME 
+							| MULTMULT NAME
+							| fpdef_recoursive MULT NAME
+							| fpdef_recoursive MULT NAME COMMA MULTMULT NAME
+							| fpdef_recoursive MULTMULT NAME
+							| fpdef 
+							| fpdef ASSIGN test
+							| fpdef_recoursive
+							;
+fpdef_recoursive		::= fpdef COMMA 
+							| fpdef ASSIGN test COMMA 
+							| fpdef COMMA fpdef_recoursive 
+							| fpdef ASSIGN test COMMA fpdef_recoursive
+							;
+fpdef					::= NAME | LPAREN fplist RPAREN;
+fplist					::= fpdef COMMA | fpdef COMMA fplist;
+
+stmt                    ::= stat_recoursive | compound_stmt ;
+
+stat_recoursive 		::= simple_stmt NEWLINE
+						| simple_stmt SEMI NEWLINE
+						| simple_stmt SEMI stat_recoursive
+						;
+simple_stmt				::= expr_stmt
+							| print_stmt
+							| del_stmt
+							| pass_stmt
+							| flow_stmt
+							| import_stmt
                  			| assert_stmt
-		                 	| assignment_stmt
-		                 	| augmented_assignment_stmt
-		                	| pass_stmt
-		                 	| del_stmt
-		                 	| print_stmt
-		                 	| return_stmt
-			                | yield_stmt
-			                | raise_stmt
-			                | break_stmt
-			                | continue_stmt
-			                | import_stmt
-			                | global_stmt
-			                | exec_stmt
+                 			| global_stmt
+                 			| exec_stmt
 			                ;
 
-/*Statements delle espressioni*/
-expression_stmt			::= expression_list;
-/*Assignment statement*/
-assignment_stmt			::= target_list ASSIGN expression_list
-						| target_list ASSIGN yield_expression
-						| target_list_recoursive expression_list
-						| target_list_recoursive yield_expression
+expr_stmt			::= testlist
+						| testlist augassign yield_expr
+						| testlist augassign testlist
+						| testlist assign_yield_rec
+						| testlist assign_testlist_rec
 						;
-target_list_recoursive	::= target_list ASSIGN | target_list ASSIGN target_list_recoursive;
-target_list				::= target | target COMMA target_list;
+assign_yield_rec	::= ASSIGN yield_expr | ASSIGN yield_expr assign_yield_rec;
+assign_testlist_rec ::= ASSIGN testlist test | ASSIGN testlist assign_testlist_rec;
+augassign			::= PLUSEQ | MINUSEQ | MULTEQ | DIVEQ | MODEQ | ANDEQ | OREQ | EXPEQ | RSEQ | LSEQ;
+/*Per l'assegnamento standard vengono applicate dall'interprete restrizioni aggiuntive*/
+print_stmt			::= PRINT 
+						| PRINT test_recoursive test
+						| PRINT test_recoursive
+						| PRINT RSHIFT test 
+						| PRINT RSHIFT test_recoursive 
+						| PRINT RSHIFT test_recoursive test;
+test_recoursive		::= test COMMA | test COMMA test_recoursive;
+
+del_stmt			::= DEL exprlist;
+pass_stmt			::= PASS;
+flow_stmt			::= BREAK 
+						| CONTINUE 
+						| return_stmt 
+						| raise_stmt 
+						| yield_expr
+						;
+return_stmt			::= RETURN | RETURN testlist;
+raise_stmt			::= RAISE | RAISE test | RAISE test COMMA test | RAISE test COMMA test COMMA test;
+
+import_stmt			::= import_name | import_from;
+import_name			::= IMPORT dotted_as_names;
+import_from			::= FROM dotted_name IMPORT MULT
+						| FROM dotted_name IMPORT LPAREN import_as_names RPAREN
+						| FROM dotted_name IMPORT import_as_names
+						| FROM dot_recoursive dotted_name IMPORT MULT
+						| FROM dot_recoursive dotted_name IMPORT LPAREN import_as_names RPAREN
+						| FROM dot_recoursive dotted_name IMPORT import_as_names
+						| FROM dot_recoursive IMPORT MULT
+						| FROM dot_recoursive IMPORT LPAREN import_as_names RPAREN
+						| FROM dot_recoursive IMPORT import_as_names
+						;
+dot_recoursive		::= DOT | DOT dot_recoursive;
+import_as_name		::= NAME | NAME AS NAME;
+dotted_as_name		::= dotted_name | dotted_name AS NAME;
+dotted_name			::= NAME | NAME DOT dotted_name;
+import_as_names		::= import_as_name | import_as_name COMMA import_as_names;
+dotted_as_names		::= dotted_as_name | dotted_as_name COMMA dotted_as_names;
+
+global_stmt			::= GLOBAL name_recoursive;
+name_recoursive		::= NAME | NAME COMMA name_recoursive;
+
+exec_stmt			::= EXEC expr | EXEC expr IN test | EXEC expr IN test COMMA test; 
+assert_stmt			::= ASSERT test | ASSERT test COMMA test;
+
+compound_stmt		::= if_stmt
+						| while_stmt
+						| for_stmt
+						| try_stmt
+						| with_stmt
+						| funcdef
+						| classdef
+						| decorated
+						;
+
+if_stmt				::= IF test COLON suite else_recoursive
+						| IF test COLON suite
+						| IF test COLON suite ELSE COLON suite
+						| IF test COLON suite else_recoursive ELSE COLON suite
+						;
+else_recoursive		::= ELIF test COLON suite | ELIF test COLON suite else_recoursive;
+
+while_stmt			::= WHILE test COLON suite | WHILE test COLON suite ELSE COLON suite;
+for_stmt			::= FOR exprlist IN testlist COLON suite | FOR exprlist IN testlist COLON suite ELSE COLON suite;
+try_stmt			::= TRY COLON suite FINALLY COLON suite
+					| TRY COLON suite except_clause_recoursive
+					| TRY COLON suite except_clause_recoursive ELSE COLON suite
+					| TRY COLON suite except_clause_recoursive FINALLY COLON suite
+					| TRY COLON suite except_clause_recoursive ELSE COLON suite FINALLY COLON suite
+					;
+except_clause_recoursive ::= except_clause COLON suite | except_clause COLON suite except_clause_recoursive;
+except_clause			::= EXCEPT 
+						| EXCEPT test 
+						| EXCEPT test AS test 
+						| EXCEPT test COMMA test;
+
+with_stmt				::= WITH with_item_recoursive COLON suite;
+with_item_recoursive	::= with_item | with_item COMMA with_item_recoursive;
+with_item				::= test | test AS expr;
+suite					::= simple_stmt | NEWLINE INDENT stmt_recoursive DEDENT;
+stmt_recoursive			::= stmt | stmt stmt_recoursive;
+
+testlist_safe			::= old_test;
+old_test				::= or_test | old_lambdef;
+old_lambdef				::= LAMBDA COLON old_test | LAMBDA varargslist COLON old_test;
+
+test					::= or_test | lambdef;
 
 /*Operazioni booleane*/
-or_test			::= and_test | or_test OR and_test;
-and_test		::= not_test | and_test AND not_test;
-//not_test		::= NOT not_test | comparison;
-comparison			::= or_expr | or_expr comp_operator comparison;
-comp_operator 		::=  MINOR | MAIOR | EQ | MAIEQ | MINEQ | NEQ
-                   		| IS | IS NOT | IN | NOT IN;           
+or_test					::= and_test | and_test OR or_test ;
+and_test				::= not_test | and_test AND not_test;
+not_test				::= comparison;
+comparison				::= expr | expr comp_operator comparison;
+comp_operator 			::=  MINOR | MAIOR | EQ | MAIEQ | MINEQ | NEQ
+                   			| IS | IS NOT | IN | NOT IN;
+expr					::= xor_expr | xor_expr PIPE expr;
+/*Operazioni binarie bit a bit*/
+xor_expr				::= and_expr | and_expr EXPON xor_expr;
+and_expr				::= shift_expr | shift_expr ECOM and_expr;
+shift_expr				::= arith_expr | arith_expr LSHIFT shift_expr | arith_expr RSHIFT shift_expr;
+arith_expr				::= term | term PLUS arith_expr | term MINUS arith_expr;
+term					::= factor
+							| factor MULT term
+							| factor DIVIDE term
+							| factor MOD term
+							| factor DIVDIV term
+						;
+factor					::= PLUS factor
+							| MINUS factor
+							| TILDE	factor
+							| power
+							;
+power					::= atom | atom MULTMULT factor | atom trailer_recoursive | atom trailer_recoursive MULTMULT factor;				
+trailer_recoursive		::= trailer | trailer trailer_recoursive;
 /*
 Atoms elementi base delle espressioni. I più semplici
 sono identificatori e letterali, anche le espressioni racchiuse
 tra parentesi sono considerate atoms.
 */
-atom					::= NAME | literal | enclosure;
+atom					::= LPAREN RPAREN
+							| LPAREN yield_expr RPAREN
+							| LPAREN testlist_comp RPAREN
+							| LBRACK RBRACK
+							| LBRACK listmaker RBRACK
+							| LCURLY RCURLY
+							| LCURLY dictorsetmaker RCURLY //manca 'testlist1'
+							| NAME | literal;
 literal					::= STRING | number;
-enclosure 				::=  parenth_form | list_display
-	               		| generator_expression | dict_display | set_display
-	               		| yield_atom; //string_conversion non so come si faccia, perchè non trovo le reverse quotes
-/*lista opzionale di espressioni*/
-parenth_form 			::= LPAREN RPAREN | LPAREN expression_list RPAREN;
-expression_list			::= exp_recoursive {:System.out.println("found explist"); :};
-exp_recoursive			::= expression | expression COMMA exp_recoursive {:System.out.println("exp_recoursive"); :};    
+listmaker				::= test list_for | test test_recoursive | test test_recoursive COMMA;
+testlist_comp			::= test comp_for | test test_recoursive;
+lambdef					::= LAMBDA COLON test | LAMBDA varargslist COLON test;
+trailer					::= LPAREN RPAREN | LPAREN arglist RPAREN
+							| LBRACK RBRACK | LBRACK subscriptlist RBRACK
+							| DOT NAME;
+subscriptlist			::= subscript | subscript COMMA subscriptlist;
+subscript				::= TRIDOT
+							| test
+							| COLON
+							| test COLON
+							| test COLON test
+							| test COLON test sliceop
+							| test COLON sliceop
+							| COLON test
+							| COLON test sliceop
+							| COLON sliceop
+							;
+sliceop					::= COLON | COLON test;
+exprlist				::= expr | expr COMMA exprlist;
+testlist				::= test | test COMMA testlist;
+dictorsetmaker			::= test dictmakerclause
+							| test setmakerclause
+							;
+dictmakerclause			::= COLON test
+							| COLON test comp_for
+							| COLON test test_comma_colon_rec
+							;
+setmakerclause			::= comp_for | comma_test_rec;
+comma_test_rec			::= COMMA test | comma_test_rec test;
+test_comma_colon_rec	::= COMMA test COLON test | test_comma_colon_rec COMMA test COLON test;	
+classdef				::= CLASS NAME COLON suite
+							| CLASS NAME LPAREN RPAREN COLON suite
+							| CLASS NAME LPAREN test testlist COLON suite
+							;
+arglist					::=	argument
+							| argument argument_rec
+							| MULT test
+							| MULT test argument_rec
+							| MULT test COMMA MULTMULT test
+							| MULT test argument_rec COMMA MULTMULT test
+							| MULTMULT test
+							| argument argument_rec COMMA MULT test
+							| argument argument_rec COMMA MULT test COMMA MULTMULT test
+							| argument argument_rec COMMA MULT test argument_rec COMMA MULTMULT test
+							| argument argument_rec COMMA MULTMULT test
+							;
+argument_rec			::= COMMA argument | argument_rec COMMA argument;
+//argument_rec			::= argument COMMA | argument COMMA argument_rec;
+argument				::= test | test comp_for | test ASSIGN test;
 
-/*list display è una serie di espressioni possibilmente vuote racchiuse in parentesi quadre*/
-list_display        ::=  LBRACK RBRACK | LBRACK expression_list RBRACK | LBRACK list_comprehension RBRACK;
-list_comprehension  ::=  expression list_for;
-list_for            ::=  FOR target_list IN old_expression_list | FOR target_list IN old_expression_list list_iter ;
-old_expression      ::=  or_test | old_lambda_form;
-old_expression_list ::=  old_expression | old_expression COMMA old_expression_list;
-list_iter           ::=  list_for | list_if;
-list_if             ::=  IF old_expression | IF old_expression list_iter;
+list_iter				::= list_for | list_if;
+list_for				::= FOR exprlist IN testlist_safe | FOR exprlist IN testlist_safe list_iter;	
+list_if					::= IF old_test | IF old_test list_iter;
 
-/*
-Per costruire un insieme o un dizionario Python fornisce una sintassi speciale chiamata "displays".
-Ciascuno dei quali in due gusti: i contenuti sono elencati esplicitamente, oppure
-essi sono calcolato tramite un set di ciclo e di istruzioni di filtraggio chiamate comprehension.
-La comprehension consiste di una singola espressione seguita da almeno una clausa for e uno o più costrutti for o if
-*/
-comprehension ::=  expression comp_for;
-comp_for      ::=  FOR target_list IN or_test | FOR target_list IN or_test comp_iter;
-comp_iter     ::=  comp_for | comp_if;
-comp_if       ::=  IF expression_nocond | IF expression_nocond comp_iter;
-
-generator_expression ::=  LPAREN expression comp_for RPAREN;
-/*
-Serie di coppie chiave-valore tra parentesi graffe
-*/
-dict_display       	::=  LCURLY RCURLY | LCURLY key_datum_list RCURLY | LCURLY dict_comprehension RCURLY ;
-key_datum_list     	::=  key_datum | key_datum COMMA key_datum_list | key_datum COMMA;
-key_datum          	::=  expression COLON expression ;
-dict_comprehension 	::=  expression COLON expression comp_for;
-
-yield_atom       	::=  LPAREN yield_expression RPAREN;
-yield_expression 	::=  YIELD | YIELD expression_list;
-
-/*Un set display è denotato dalle parentesi graffe, ma a differenza del dizionario, non vi è la virgola tra chiave e valore*/
-set_display 		::=  LCURLY expression_list RCURLY | LCURLY comprehension RCURLY;
-
-/*Le primaries rappresentano le operazioni più strettamente limitate del linguagio*/
-primary				::= atom | attributeref | subscription | slicing | call;
-attributeref 		::=  atom DOT NAME
-					| subscription DOT NAME
-					| slicing DOT NAME
-					| call DOT NAME
-					;
-/*una subscription seleziona un oggetto di una sequenza o di un dizionario*/
-subscription ::=  primary LBRACK expression_list RBRACK;
-/*Uno slicing seleziona un intervallo di oggetti in una sequenza*/
-slicing          	::=  simple_slicing | extended_slicing;
-simple_slicing   	::=  primary LBRACK short_slice RBRACK;
-extended_slicing 	::=  primary LBRACK slice_list RBRACK;
-slice_list			::=	 slice_item | slice_item COMMA | slice_list;//slice_list       	::=  slice_item ("," slice_item)* [","]
-slice_item       	::=  expression | proper_slice | ellipsis;
-proper_slice     	::=  short_slice | long_slice;
-short_slice			::=  lower_bound COLON upper_bound; //short_slice      	::=  [lower_bound] COLON [upper_bound]
-long_slice       	::=  short_slice COLON | short_slice COLON stride;
-lower_bound      	::=  expression;
-upper_bound      	::=  expression;
-stride           	::=  expression;
-ellipsis         	::=  TRIDOT;
-
-/*Calls serve per chiamare gli oggetti come funzioni con una serie di parametri*/
-//call                 ::=  primary "(" [argument_list [","] | expression genexpr_for] ")"
-call                 ::=  primary LPAREN RPAREN 
-						| primary LPAREN argument_list RPAREN 
-						| primary LPAREN argument_list COMMA RPAREN 
-						| primary LPAREN expression genexpr_for RPAREN;
-
-/*
-argument_list    ::=  positional_arguments ["," keyword_arguments] ["," "*" expression] ["," keyword_arguments] ["," "**" expression]
-                          | keyword_arguments ["," "*" expression]
-                            ["," "**" expression]
-                          | "*" expression ["," "*" expression] ["," "**" expression]
-                          | "**" expression
-*/
-
-argument_list        ::=  positional_arguments
-						| positional_arguments COMMA keyword_arguments
-						| positional_arguments COMMA MULT expression
-						| positional_arguments COMMA keyword_arguments COMMA MULT expression COMMA keyword_arguments
-						| positional_arguments COMMA MULTMULT expression
-						| positional_arguments COMMA keyword_arguments COMMA MULT expression COMMA keyword_arguments COMMA MULTMULT expression
-						| keyword_arguments | keyword_arguments COMMA MULT expression | keyword_arguments COMMA MULTMULT expression | keyword_arguments COMMA MULT expression COMMA MULTMULT expression
-						| MULT expression | MULT expression COMMA MULT expression | MULT expression COMMA MULTMULT expression | MULT expression COMMA MULT expression COMMA MULTMULT expression
-						| MULTMULT expression
-						;
-positional_arguments ::=  expression | expression COMMA positional_arguments;
-keyword_arguments    ::=  keyword_item | keyword_item COMMA keyword_arguments;
-keyword_item         ::=  NAME ASSIGN expression;
-
-/*Operatori di elevamento a potenza*/
-power				::= primary | primary EXPON u_expr;
-/*Operazioni di shifting*/
-shift_expr			::= a_expr | shift_expr LPAREN LSHIFT RPAREN a_expr
-						| shift_expr LPAREN RSHIFT RPAREN a_expr
-						;
-						
-/*Operazioni condizionali*/
-conditional_expression	::= or_test	| or_test IF or_test ELSE expression;
-
-expression				::= conditional_expression | lambda_form;	
-lambda_form				::= LAMBDA COLON expression
-							| LAMBDA parameter_list COLON expression;
-old_lambda_form 		::= LAMBDA COLON old_expression
-							| LAMBDA parameter_list COLON old_expression;
-							
-target					::= NAME
-						| LPAREN target_list RPAREN
-						| LBRACK target_list RBRACK
-						//| attributeref
-						//| subscription
-						//| slicing
-						;
-
-/*Operazioni binarie bit a bit*/
-and_expr			::= shift_expr | and_expr AND shift_expr;
-xor_expr			::= and_expr | xor_expr EXPON and_expr;
-or_expr				::= xor_expr | or_expr OR xor_expr;    		
-/*operatori unari*/
-u_expr				::= power | MINUS u_expr | PLUS u_expr | TILDE u_expr;
-/*Operatori binari*/
-m_expr 			::=  u_expr | m_expr MULT u_expr | m_expr DIVDIV u_expr | m_expr DIVIDE u_expr
-            		| m_expr MOD u_expr;
-a_expr 			::=  m_expr | a_expr PLUS m_expr | a_expr MINUS m_expr;
-
+comp_iter				::= comp_for | comp_if;
+comp_for				::= FOR exprlist IN or_test | FOR exprlist IN or_test comp_iter;
+comp_if					::= IF old_test | IF old_test list_iter;
+yield_expr				::= YIELD | YIELD testlist;
+												
 number					::= FLOAT |IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN ;

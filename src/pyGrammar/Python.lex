@@ -160,7 +160,7 @@ SEMI		= ";"
 {EQ}			{return sym(EQ);}
 {NEQ}			{return sym(NEQ);}
 "~"				{return sym(TILDE);}
-"&"				{return sym(AND);}
+"&"				{return sym(ECOM);}
 "|"				{return sym(PIPE);}
 "<<"			{return sym(LSHIFT);}
 ">>"			{return sym(RSHIFT);}
