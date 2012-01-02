@@ -23,15 +23,10 @@ terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
 terminal		STRING, DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
 terminal        NAME, NEWLINE, MULTMULT, INDENT, DEDENT;
 
-non terminal	atom, literal;
-non terminal	list_for, list_iter, list_if;
-non terminal	or_test;
-non terminal	comp_for, comp_iter, comp_if;
-non terminal	power, shift_expr, and_expr, xor_expr, and_test, not_test;
-non terminal	file_input, file_input_recoursive, stmt, number, stat_recoursive;
-non terminal	comparison, comp_operator;
+non terminal	atom, literal,list_for, list_iter, list_if,or_test, comp_for, comp_iter, comp_if;
+non terminal	power, shift_expr, and_expr, xor_expr, and_test, not_test, file_input, file_input_recoursive, stmt, number;
 non terminal	simple_stmt, compound_stmt, del_stmt, print_stmt, return_stmt, raise_stmt, flow_stmt, global_stmt, expr_stmt;
-non terminal	assert_stmt, pass_stmt, import_stmt, exec_stmt;
+non terminal	assert_stmt, pass_stmt, import_stmt, exec_stmt,comparison, comp_operator;
 non terminal	assign_testlist_rec, assign_yield_rec, testlist, augassign, yield_expr;
 non terminal	test_recoursive, test, exprlist, dotted_name, import_as_names, dotted_as_name, name_recoursive;
 non terminal	import_name, import_from, dotted_as_names, dot_recoursive, import_as_name, except_clause_recoursive, except_clause;
@@ -41,6 +36,35 @@ non terminal	arith_expr, term, factor, trailer_recoursive, trailer, testlist_com
 non terminal	argument, argument_rec, testlist_safe, old_test, old_lambdef, decorator, decorators, parameters;
 non terminal	fpdef_recoursive, fpdef, fplist, comma_test_rec, dictmakerclause, setmakerclause;
 
+/*Precedenza operatori: 
+	lambda	Lambda expression
+	if – else	Conditional expression
+	or	Boolean OR
+	and	Boolean AND
+	not x	Boolean NOT
+	in, not in, is, is not, <, <=, >, >=, <>, !=, ==	Comparisons, including membership tests and identity tests,
+	|	Bitwise OR
+	^	Bitwise XOR
+	&	Bitwise AND
+	<<, >>	Shifts
+	+, -	Addition and subtraction
+	*, /, //, %	Multiplication, division, remainder [8]
+	+x, -x, ~x	Positive, negative, bitwise NOT
+	**	Exponentiation
+*/
+precedence left LAMBDA;
+precedence left OR;
+precedence left AND;
+precedence left NOT;
+precedence left MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ, IN, IS;
+precedence left PIPE;
+precedence left EXPON;
+precedence left ECOM;
+precedence left LSHIFT, RSHIFT;
+precedence left PLUS, MINUS;
+precedence left MULT, DIVIDE, MOD;
+precedence left TILDE;
+precedence left MULTMULT;
 
 file_input                ::= file_input_recoursive;
 
@@ -82,12 +106,8 @@ fpdef_recoursive		::= fpdef COMMA
 fpdef					::= NAME | LPAREN fplist RPAREN;
 fplist					::= fpdef COMMA | fpdef COMMA fplist;
 
-stmt                    ::= stat_recoursive | compound_stmt ;
+stmt                    ::= simple_stmt | simple_stmt SEMI | compound_stmt ;
 
-stat_recoursive 		::= simple_stmt NEWLINE
-						| simple_stmt SEMI NEWLINE
-						| simple_stmt SEMI stat_recoursive
-						;
 simple_stmt				::= expr_stmt
 							| print_stmt
 							| del_stmt
@@ -109,12 +129,12 @@ assign_yield_rec	::= ASSIGN yield_expr | ASSIGN yield_expr assign_yield_rec;
 assign_testlist_rec ::= ASSIGN testlist test | ASSIGN testlist assign_testlist_rec;
 augassign			::= PLUSEQ | MINUSEQ | MULTEQ | DIVEQ | MODEQ | ANDEQ | OREQ | EXPEQ | RSEQ | LSEQ;
 /*Per l'assegnamento standard vengono applicate dall'interprete restrizioni aggiuntive*/
-print_stmt			::= PRINT 
-						| PRINT test_recoursive test
+print_stmt			::= PRINT test_recoursive test
 						| PRINT test_recoursive
 						| PRINT RSHIFT test 
 						| PRINT RSHIFT test_recoursive 
-						| PRINT RSHIFT test_recoursive test;
+						| PRINT RSHIFT test_recoursive test
+						;
 test_recoursive		::= test COMMA | test COMMA test_recoursive;
 
 del_stmt			::= DEL exprlist;
@@ -125,8 +145,8 @@ flow_stmt			::= BREAK
 						| raise_stmt 
 						| yield_expr
 						;
-return_stmt			::= RETURN | RETURN testlist;
-raise_stmt			::= RAISE | RAISE test | RAISE test COMMA test | RAISE test COMMA test COMMA test;
+return_stmt			::= RETURN testlist;
+raise_stmt			::= RAISE test | RAISE test COMMA test | RAISE test COMMA test COMMA test;
 
 import_stmt			::= import_name | import_from;
 import_name			::= IMPORT dotted_as_names;
@@ -294,6 +314,6 @@ list_if					::= IF old_test | IF old_test list_iter;
 comp_iter				::= comp_for | comp_if;
 comp_for				::= FOR exprlist IN or_test | FOR exprlist IN or_test comp_iter;
 comp_if					::= IF old_test | IF old_test list_iter;
-yield_expr				::= YIELD | YIELD testlist;
+yield_expr				::= YIELD testlist;
 												
-number					::= FLOAT |IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN ;
+number					::= FLOAT|IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN;
