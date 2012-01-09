@@ -11,30 +11,23 @@ action code
 {:
 :}
 
+
 terminal        AND, AS, ASSERT, BREAK, CLASS, CONTINUE;
 terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
 terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
 terminal        IN, IS, LAMBDA, NOT, OR, PASS;
 terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH;
-terminal        YIELD, TRIDOT, DIVDIV;
+terminal        YIELD, TRIDOT, DIVDIV, XOR;
 terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
 terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
 terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
 terminal		STRING, DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
 terminal        NAME, NEWLINE, MULTMULT, INDENT, DEDENT;
 
-non terminal	atom, literal,list_for, list_iter, list_if,or_test, comp_for, comp_iter, comp_if;
-non terminal	power, shift_expr, and_expr, xor_expr, and_test, not_test, file_input, file_input_recoursive, stmt, number;
-non terminal	simple_stmt, compound_stmt, del_stmt, print_stmt, return_stmt, raise_stmt, flow_stmt, global_stmt, expr_stmt;
-non terminal	assert_stmt, pass_stmt, import_stmt, exec_stmt,comparison, comp_operator;
-non terminal	assign_testlist_rec, assign_yield_rec, testlist, augassign, yield_expr;
-non terminal	test_recoursive, test, exprlist, dotted_name, import_as_names, dotted_as_name, name_recoursive;
-non terminal	import_name, import_from, dotted_as_names, dot_recoursive, import_as_name, except_clause_recoursive, except_clause;
-non terminal	expr, if_stmt, while_stmt, for_stmt, with_stmt,try_stmt, funcdef, classdef, decorated, else_recoursive, suite;
-non terminal	with_item, with_item_recoursive, stmt_recoursive, lambdef;
-non terminal	arith_expr, term, factor, trailer_recoursive, trailer, testlist_comp, listmaker,dictorsetmaker, varargslist, arglist, subscriptlist, subscript, sliceop, test_comma_colon_rec;
-non terminal	argument, argument_rec, testlist_safe, old_test, old_lambdef, decorator, decorators, parameters;
-non terminal	fpdef_recoursive, fpdef, fplist, comma_test_rec, dictmakerclause, setmakerclause;
+non terminal	file_input, file_input_recoursive, stmt,simple_stmt, expr_stmt, print_stmt,del_stmt,flow_stmt,import_stmt, assert_stmt,global_stmt,exec_stmt;
+non terminal	number, binop, unop, comparison, lambdef, expr, atom, test, trailer, yield_expr, testlist_comp, listmaker, dictorsetmaker, testlist, exprlist;
+non terminal	list_iter, list_for, list_if, varargslist, defparameter_recoursive, defparameter, fpdef, fplist, name_recoursive;
+non terminal	augassign, assign_recoursive, return_stmt,raise_stmt, dotted_name, dotted_as_name, dotted_as_names, import_as_name, import_as_names, dot_rec;
 
 /*Precedenza operatori: 
 	lambda	Lambda expression
@@ -58,13 +51,189 @@ precedence left AND;
 precedence left NOT;
 precedence left MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ, IN, IS;
 precedence left PIPE;
+precedence left XOR;
+precedence left ECOM;
+precedence left LSHIFT, RSHIFT;
+precedence left PLUS, MINUS;
+precedence left MULT, DIVIDE, MOD;
+precedence left TILDE;
+precedence right MULTMULT;
+
+file_input                ::= file_input_recoursive;
+
+file_input_recoursive     ::= stmt | stmt NEWLINE file_input_recoursive
+                            |SEMI file_input_recoursive
+                            | NEWLINE file_input_recoursive
+                            |
+                            ;
+stmt                    ::= simple_stmt | simple_stmt SEMI;
+
+simple_stmt				::= expr_stmt
+							| print_stmt
+							| del_stmt
+							| PASS
+							| flow_stmt
+							| import_stmt
+                 			| assert_stmt
+                 			| global_stmt
+                 			| exec_stmt
+			                ;
+expr_stmt				::= testlist 
+							| testlist augassign testlist 
+							| testlist assign_recoursive
+							;
+print_stmt				::= PRINT | PRINT testlist {:System.out.println("Found print_stmt");:} | PRINT RSHIFT testlist;
+del_stmt				::= DEL exprlist;
+flow_stmt				::= BREAK 
+							| CONTINUE 
+							| return_stmt 
+							| raise_stmt 
+							| yield_expr
+							;
+return_stmt				::= RETURN testlist;
+raise_stmt				::= RAISE test | RAISE test COMMA test | RAISE test COMMA test COMMA test;
+import_stmt				::= IMPORT dotted_as_names
+							| FROM dotted_name IMPORT MULT
+							| FROM dotted_name IMPORT LPAREN import_as_names RPAREN
+							| FROM dotted_name IMPORT import_as_names
+							| FROM dot_rec dotted_name IMPORT MULT
+							| FROM dot_rec dotted_name IMPORT LPAREN import_as_names RPAREN
+							| FROM dot_rec dotted_name IMPORT import_as_names
+							| FROM DOT dot_rec IMPORT MULT
+							| FROM DOT dot_rec IMPORT LPAREN import_as_names RPAREN
+							| FROM DOT dot_rec IMPORT import_as_names
+							;
+dotted_as_names			::= dotted_as_name | dotted_as_name COMMA dotted_as_names;
+dotted_as_name			::= dotted_name | dotted_name AS NAME;
+dotted_name				::= NAME | NAME DOT dotted_name;
+import_as_names			::= import_as_name | import_as_name COMMA import_as_names;
+import_as_name			::= NAME | NAME AS NAME;
+dot_rec					::= DOT | DOT dot_rec;
+global_stmt				::= GLOBAL name_recoursive;
+name_recoursive			::= NAME | NAME COMMA name_recoursive;
+exec_stmt				::= EXEC expr | EXEC expr IN test | EXEC expr IN test COMMA test;
+assert_stmt				::= ASSERT testlist;
+assign_recoursive		::= ASSIGN testlist | ASSIGN testlist assign_recoursive; 
+augassign				::= PLUSEQ | MINUSEQ | MULTEQ | DIVEQ | MODEQ | ANDEQ | OREQ | EXPEQ | RSEQ | LSEQ;
+test					::= comparison | lambdef;
+comparison				::= expr | expr binop comparison;
+expr					::= atom | atom trailer;
+atom					::= NAME | number | STRING
+							| unop atom
+							| LPAREN RPAREN
+							| LBRACK RBRACK
+							| LCURLY RCURLY
+							| LPAREN yield_expr RPAREN
+							| LPAREN testlist_comp RPAREN
+							| LBRACK listmaker RBRACK
+							| LCURLY dictorsetmaker RCURLY
+							;
+yield_expr				::= YIELD | YIELD testlist;
+
+/* Sono stati eliminati i riferimenti a old_test e old_lambdef poichè superflui per lo scopo del progetto. */
+testlist_comp			::= test list_for | testlist;
+list_iter				::= list_for | list_if;
+list_for				::= FOR exprlist IN testlist | FOR exprlist IN testlist list_iter;
+list_if					::= IF test | IF test list_iter;
+testlist				::= test | test COMMA testlist;
+exprlist				::= expr | expr COMMA | expr COMMA exprlist;
+
+/* Le lambda form hanno la stessa posizione sintattica delle espressioni e servono per creare funzioni anonime. */
+lambdef					::= LAMBDA COLON test | LAMBDA varargslist COLON test;
+varargslist				::= defparameter_recoursive
+							| defparameter_recoursive MULT NAME
+							| defparameter_recoursive MULTMULT NAME
+							| defparameter_recoursive MULT NAME COMMA MULTMULT NAME
+							| MULT NAME
+							| MULT NAME COMMA MULTMULT NAME
+							| MULTMULT NAME
+							;
+defparameter_recoursive	::= defparameter | defparameter COMMA | defparameter COMMA defparameter_recoursive;
+defparameter			::= fpdef | fpdef ASSIGN test;
+fpdef					::= NAME | LPAREN fplist RPAREN;
+fplist					::= fpdef | fpdef COMMA | fpdef COMMA fplist;
+
+/* Listmaker per la creazione di liste */
+listmaker				::= test list_for | testlist;
+
+/* Dictionary maker e Set maker pre creare i dizionari oppure gli insiemi. */
+dictorsetmaker			::= test COLON test | test COLON test COMMA | test COLON test COMMA dictorsetmaker;
+
+binop 					::= PLUS | MINUS | MULT | DIVIDE | XOR | MOD| IS | IN | IS NOT | NOT IN | LSHIFT | RSHIFT
+		 					|MINOR | MINEQ | MAIOR | MAIEQ | EQ | NEQ | AND | OR | MULTMULT | NOT
+		 					;
+unop					::= MINUS | NOT | TILDE;
+number					::= FLOAT | IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN;
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+terminal        AND, AS, ASSERT, BREAK, CLASS, CONTINUE;
+terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
+terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
+terminal        IN, IS, LAMBDA, NOT, OR, PASS;
+terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH;
+terminal        YIELD, TRIDOT, DIVDIV;
+terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
+terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
+terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
+terminal		STRING, DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
+terminal        NAME, NEWLINE, MULTMULT, INDENT, DEDENT;
+
+non terminal	atom, literal,list_for, list_iter, list_if,or_test, comp_for, comp_iter, comp_if;
+non terminal	power, shift_expr, and_expr, xor_expr, and_test, not_test, file_input, file_input_recoursive, stmt, number;
+non terminal	simple_stmt, compound_stmt, del_stmt, print_stmt, return_stmt, raise_stmt, flow_stmt, global_stmt, expr_stmt;
+non terminal	assert_stmt, pass_stmt, import_stmt, exec_stmt,comparison, comp_operator;
+non terminal	assign_testlist_rec, assign_yield_rec, testlist, augassign, yield_expr;
+non terminal	test_recoursive, test, exprlist, dotted_name, import_as_names, dotted_as_name, name_recoursive;
+non terminal	import_name, import_from, dotted_as_names, dot_recoursive, import_as_name, except_clause_recoursive, except_clause;
+non terminal	expr, if_stmt, while_stmt, for_stmt, with_stmt,try_stmt, funcdef, classdef, decorated, else_recoursive, suite;
+non terminal	with_item, with_item_recoursive, stmt_recoursive, lambdef;
+non terminal	arith_expr, term, factor, trailer_recoursive, trailer, testlist_comp, listmaker,dictorsetmaker, varargslist, arglist, subscriptlist, subscript, sliceop, test_comma_colon_rec;
+non terminal	argument, argument_rec, testlist_safe, old_test, old_lambdef, decorator, decorators, parameters;
+non terminal	fpdef_recoursive, fpdef, fplist, comma_test_rec, dictmakerclause, setmakerclause;*/
+
+/*Precedenza operatori: 
+	lambda	Lambda expression
+	if – else	Conditional expression
+	or	Boolean OR
+	and	Boolean AND
+	not x	Boolean NOT
+	in, not in, is, is not, <, <=, >, >=, <>, !=, ==	Comparisons, including membership tests and identity tests,
+	|	Bitwise OR
+	^	Bitwise XOR
+	&	Bitwise AND
+	<<, >>	Shifts
+	+, -	Addition and subtraction
+	*, /, //, %	Multiplication, division, remainder [8]
+	+x, -x, ~x	Positive, negative, bitwise NOT
+	**	Exponentiation
+*/
+/*
+precedence left LAMBDA;
+precedence left OR;
+precedence left AND;
+precedence left NOT;
+precedence left MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ, IN, IS;
+precedence left PIPE;
 precedence left EXPON;
 precedence left ECOM;
 precedence left LSHIFT, RSHIFT;
 precedence left PLUS, MINUS;
 precedence left MULT, DIVIDE, MOD;
 precedence left TILDE;
-precedence left MULTMULT;
+precedence right MULTMULT;
+precedence left LPAREN;
 
 file_input                ::= file_input_recoursive;
 
@@ -81,13 +250,13 @@ decorators				::= decorator | decorator decorators;
 decorated				::= decorators classdef | decorators funcdef;
 funcdef					::= DEF NAME parameters COLON suite;
 
-parameters				::= LPAREN varargslist RPAREN;
+parameters				::= LPAREN varargslist RPAREN;*/
 /*
 varargslist: ((fpdef ['=' test] ',')*
               ('*' NAME [',' '**' NAME] | '**' NAME) |
               fpdef ['=' test] (',' fpdef ['=' test])* [','])
 */
-              
+/*
 varargslist				::= MULT NAME 
 							| MULT NAME COMMA MULTMULT NAME 
 							| MULTMULT NAME
@@ -127,8 +296,9 @@ expr_stmt			::= testlist
 						;
 assign_yield_rec	::= ASSIGN yield_expr | ASSIGN yield_expr assign_yield_rec;
 assign_testlist_rec ::= ASSIGN testlist test | ASSIGN testlist assign_testlist_rec;
-augassign			::= PLUSEQ | MINUSEQ | MULTEQ | DIVEQ | MODEQ | ANDEQ | OREQ | EXPEQ | RSEQ | LSEQ;
+augassign			::= PLUSEQ | MINUSEQ | MULTEQ | DIVEQ | MODEQ | ANDEQ | OREQ | EXPEQ | RSEQ | LSEQ;*/
 /*Per l'assegnamento standard vengono applicate dall'interprete restrizioni aggiuntive*/
+/*
 print_stmt			::= PRINT test_recoursive test
 						| PRINT test_recoursive
 						| PRINT RSHIFT test 
@@ -214,17 +384,19 @@ testlist_safe			::= old_test;
 old_test				::= or_test | old_lambdef;
 old_lambdef				::= LAMBDA COLON old_test | LAMBDA varargslist COLON old_test;
 
-test					::= or_test | lambdef;
+test					::= or_test | lambdef;*/
 
 /*Operazioni booleane*/
+/*
 or_test					::= and_test | and_test OR or_test ;
 and_test				::= not_test | and_test AND not_test;
 not_test				::= comparison;
 comparison				::= expr | expr comp_operator comparison;
 comp_operator 			::=  MINOR | MAIOR | EQ | MAIEQ | MINEQ | NEQ
                    			| IS | IS NOT | IN | NOT IN;
-expr					::= xor_expr | xor_expr PIPE expr;
+expr					::= xor_expr | xor_expr PIPE expr;*/
 /*Operazioni binarie bit a bit*/
+/*
 xor_expr				::= and_expr | and_expr EXPON xor_expr;
 and_expr				::= shift_expr | shift_expr ECOM and_expr;
 shift_expr				::= arith_expr | arith_expr LSHIFT shift_expr | arith_expr RSHIFT shift_expr;
@@ -241,12 +413,13 @@ factor					::= PLUS factor
 							| power
 							;
 power					::= atom | atom MULTMULT factor | atom trailer_recoursive | atom trailer_recoursive MULTMULT factor;				
-trailer_recoursive		::= trailer | trailer trailer_recoursive;
+trailer_recoursive		::= trailer | trailer trailer_recoursive;*/
 /*
 Atoms elementi base delle espressioni. I più semplici
 sono identificatori e letterali, anche le espressioni racchiuse
 tra parentesi sono considerate atoms.
 */
+/*
 atom					::= LPAREN RPAREN
 							| LPAREN yield_expr RPAREN
 							| LPAREN testlist_comp RPAREN
@@ -304,7 +477,6 @@ arglist					::=	argument
 							| argument argument_rec COMMA MULTMULT test
 							;
 argument_rec			::= COMMA argument | argument_rec COMMA argument;
-//argument_rec			::= argument COMMA | argument COMMA argument_rec;
 argument				::= test | test comp_for | test ASSIGN test;
 
 list_iter				::= list_for | list_if;
@@ -316,4 +488,4 @@ comp_for				::= FOR exprlist IN or_test | FOR exprlist IN or_test comp_iter;
 comp_if					::= IF old_test | IF old_test list_iter;
 yield_expr				::= YIELD testlist;
 												
-number					::= FLOAT|IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN;
+number					::= FLOAT|IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN;*/
