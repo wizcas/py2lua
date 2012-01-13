@@ -17,7 +17,7 @@ terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
 terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
 terminal        IN, IS, LAMBDA, NOT, OR, PASS;
 terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH;
-terminal        YIELD, TRIDOT, DIVDIV, XOR;
+terminal        YIELD, TRIDOT, DIVDIV;
 terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
 terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
 terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
@@ -30,7 +30,7 @@ non terminal	list_iter, list_for, list_if, varargslist, defparameter_recoursive,
 non terminal	augassign, assign_recoursive, return_stmt,raise_stmt, dotted_name, dotted_as_name, dotted_as_names, import_as_name, import_as_names, dot_rec;
 non terminal	arglist, subscriptlist, subscript,subscript_rec,sliceop,argument,argument_rec,comp_for,comp_iter,comp_if, compound_stmt;
 non terminal	if_stmt, while_stmt, for_stmt, try_stmt, with_stmt, funcdef, classdef, decorated, suite, stmt_rec, small_stmt;
-non terminal	newline_or_stmt, else_recoursive,except_clause, except_clause_recoursive, with_item, with_item_recoursive;
+non terminal	newline_or_stmt, else_recoursive,except_clause, except_clause_recoursive, with_item, with_item_recoursive, parameters, decorators, decorator;
 
 
 /*Precedenza operatori: 
@@ -55,7 +55,7 @@ precedence left AND;
 precedence left NOT;
 precedence left MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ, IN, IS;
 precedence left PIPE;
-precedence left XOR;
+precedence left EXPON;
 precedence left ECOM;
 precedence left LSHIFT, RSHIFT;
 precedence left PLUS, MINUS;
@@ -77,6 +77,15 @@ file_input_recoursive     ::= //NEWLINE | stmt | stmt file_input_recoursive
                             newline_or_stmt | newline_or_stmt file_input_recoursive
                             ;
 newline_or_stmt			::= NEWLINE | stmt;
+
+decorator				::= AT dotted_name NEWLINE
+							| AT dotted_name LPAREN RPAREN NEWLINE
+							| AT dotted_name LPAREN arglist RPAREN NEWLINE
+							;
+decorators				::= decorator | decorator decorators;
+decorated				::= decorators classdef | decorators funcdef;
+funcdef					::= DEF NAME parameters COLON suite;
+parameters				::= LPAREN RPAREN | LPAREN varargslist RPAREN;
 varargslist				::= defparameter_recoursive:d {:RESULT = d; :}
 							| defparameter_recoursive:d MULT NAME:n {:RESULT = d+"*"+n; :}
 							| defparameter_recoursive:d MULTMULT NAME:n {:RESULT = d+"**"+n; :}
@@ -116,11 +125,11 @@ augassign				::= PLUSEQ:op {:RESULT=op;:}| MINUSEQ:op {:RESULT=op;:} | MULTEQ:op
 							| OREQ:op {:RESULT=op;:} | EXPEQ:op {:RESULT=op;:} | RSEQ:op {:RESULT=op;:} | LSEQ:op {:RESULT=op;:};
 print_stmt				::= PRINT {:RESULT = "print";:} | PRINT testlist:t {:RESULT = "print" + t.toString();:}| PRINT RSHIFT testlist:t {:RESULT = "print >>" + t.toString();:};
 del_stmt				::= DEL exprlist;
-flow_stmt				::= BREAK 
-							| CONTINUE 
-							| return_stmt 
-							| raise_stmt 
-							| yield_expr
+flow_stmt				::= BREAK {:RESULT="break";:}
+							| CONTINUE {:RESULT="continue";:}
+							| return_stmt:r {:RESULT=r;:}
+							| raise_stmt:r {:RESULT=r;:}
+							| yield_expr:y {:RESULT=y;:}
 							;
 return_stmt				::= RETURN testlist;
 raise_stmt				::= RAISE test | RAISE test COMMA test | RAISE test COMMA test COMMA test;
@@ -231,6 +240,12 @@ subscript				::= TRIDOT {:RESULT="...";:} | test:t {:RESULT = t;:} | COLON {:RES
 							| COLON sliceop:slice {:RESULT=":"+slice.toString();:}
 							;
 sliceop					::= COLON {:RESULT=":";:} | COLON test:t {:RESULT=":"+t.toString();:};
+
+classdef				::= CLASS NAME COLON suite
+							| CLASS NAME LPAREN RPAREN COLON suite
+							| CLASS NAME LPAREN testlist RPAREN COLON suite
+							;
+
 arglist					::=	argument
 							| argument argument_rec
 							| MULT test
@@ -258,12 +273,13 @@ comp_if					::= IF test | IF test comp_iter;
 
 
 binop 					::= PLUS:p {:RESULT = p;:} | MINUS:m {:RESULT = m;:}| MULT:m {:RESULT = m;:}
-							| DIVIDE:d {:RESULT = d;:}| XOR:x {:RESULT = x;:}| MOD:m {:RESULT = m;:}
+							| DIVIDE:d {:RESULT = d;:}| EXPON:ex {:RESULT = ex;:}| MOD:m {:RESULT = m;:}
 							| IS:is {:RESULT = is;:}| IN:in {:RESULT = in;:}| IS NOT:isnot {:RESULT = isnot;:}
 							| NOT IN:notin {:RESULT = notin;:}| LSHIFT:lshift {:RESULT = lshift;:}| RSHIFT: rshift{:RESULT = rshift;:}
 		 					| MINOR:min {:RESULT = min;:}| MINEQ:mineq {:RESULT = mineq;:}| MAIOR:mag {:RESULT = mag;:}
 		 					| MAIEQ:maieq {:RESULT = maieq;:}| EQ:eq {:RESULT = eq;:}| NEQ:neq {:RESULT = neq;:}
 		 					| AND:and {:RESULT = and;:}| OR:or {:RESULT = or;:}| MULTMULT:doublestar {:RESULT = doublestar;:}| NOT:not{:RESULT = not;:}
+		 					| PIPE:p {:RESULT=p;:}|ECOM:ec {:RESULT=ec;:}|DIVDIV:double_div {:RESULT = double_div;:}
 		 					;
 unop					::= MINUS:m {:RESULT=m;:} | PLUS:p {:RESULT=p;:} | TILDE:t {:RESULT=t;:};
 number					::= FLOAT:f {:RESULT = Float.parseFloat(f.toString());:} 
