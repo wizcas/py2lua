@@ -10,7 +10,7 @@ public class Program
 	public static void main(String args[])
 	{
 		System.out.println("source-to-source compiler.");
-		/*LuaGrammarLex luaLexer;
+		LuaGrammarLex luaLexer;
 		try {
 			luaLexer = new LuaGrammarLex(new FileReader("Prova.txt"));
 			LuaGrammarCup parser = new LuaGrammarCup(luaLexer);
@@ -23,7 +23,7 @@ public class Program
 		{
 			System.out.println("Eccezione");
 			e.printStackTrace();
-		}*/
+		}
 		
 		PythonLex lexer;
 		try {
