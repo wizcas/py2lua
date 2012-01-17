@@ -2,17 +2,119 @@
 package pyGrammar;
 
 import java_cup.runtime.*;
+import java.io.*;
+
+init with {:
+    // String buffer used to store output program
+    outputBuffer = new StringBuffer();
+    counter = 0;
+:};
 
 parser code
 {:
+ // Represent the number of the first usable label 
+    public int label = 0;
+
+    // It can be "stdout" to write output program to standard
+    // output or "file" to dump program in a file.
+    public static String dumpOutput;
+
+    // It's true if the semantic check is enabled
+    public boolean enableSem = true;
+    
+    // String buffer used to store output program
+    public StringBuffer outputBuffer;
+    
+     // counter used to count indentation level
+    public int counter;
+
+    // Redefinition of error functions
+    public void report_error(String message, Object info) {
+        System.err.print("ERROR: Syntax error");
+        if (info instanceof Symbol)
+            if (((Symbol)info).left != -1){
+                int line = (((Symbol)info).left)+1;
+                int column = (((Symbol)info).right)+1;
+                System.err.print(" (linea "+line+", colonna "+column+"): ");
+            } else System.err.print(": ");
+        else System.err.print(": ");
+    }
+    public void syntax_error(Symbol cur_token){}
+
+    // Return actual symbol
+    public Symbol getToken() {
+        return ((Symbol)stack.elementAt(tos));
+    }
+
+    // Return semantic value of symbol in position (position)
+    public Object stack(int position) {
+        return (((Symbol)stack.elementAt(tos+position)).value);
+    }
+
+    // Return the line number of actual symbol
+    public int getLine() {
+        if (((Symbol)stack.elementAt(tos)).left != -1){
+            return ((Symbol)stack.elementAt(tos)).left+1;
+        }else return -1;
+    }
+    // Return the column number of actual symbol
+    public int getColumn() {
+        if (((Symbol)stack.elementAt(tos)).left != -1){
+            return ((Symbol)stack.elementAt(tos)).right+1;
+        }else return -1;
+    }
 :}
 
 action code
 {:
+	// Disable semantic check
+    private void disableSem(){
+        parser.enableSem = false;
+    }
+    // Return true if semantic is enabled, false otherwise
+    private boolean sem(){
+        return parser.enableSem;
+    }
+	// Error management
+    private void pSemError(String message){
+        System.err.println("SEM ERROR: line: "+parser.getLine()+" col: "+parser.getColumn()+": "+message);
+
+        parser.done_parsing();
+    }
+    private void pSemWarning(String message){
+        System.err.println("SEM WARNING: line: "+parser.getLine()+" col: "+parser.getColumn()+": "+message);
+    }
+    private void pSynError(String message){
+        System.err.println("SYN ERROR: line: "+parser.getLine()+" col: "+parser.getColumn()+": "+message);
+        parser.done_parsing();
+    }
+    private void pSynWarning(String message){
+        System.err.println("SYN WARNING: line: "+parser.getLine()+" col: "+parser.getColumn()+": "+message);
+        /* Quando c'e' un errore sintattico continuo il parsing ma disabilito la semantica */
+        disableSem();
+    }
+        
+    // Write a string in output
+    private void dump(String s){
+        parser.outputBuffer.append(s);
+    }
+    private void dumpln(String s){
+        parser.outputBuffer.append(s+"\n");
+    }
+    
+    private void incrementIndent()
+    {
+    	parser.counter++;
+    }
+    
+    private int getCounter()
+    {
+    	return parser.counter;
+    }
+
 :}
 
-
-terminal        AND, AS, ASSERT, BREAK, CLASS, CONTINUE;
+terminal        WS,AND, AS, ASSERT, BREAK, CLASS, CONTINUE, WHITESPACE;
 terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
 terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
 terminal        IN, IS, LAMBDA, NOT, OR, PASS;
@@ -21,16 +123,17 @@ terminal        YIELD, TRIDOT, DIVDIV;
 terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
 terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
 terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
-terminal		STRING, DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
-terminal        NAME, NEWLINE, MULTMULT, INDENT, DEDENT;
+terminal		DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
+terminal        NEWLINE, MULTMULT, INDENT, DEDENT;
+terminal String NAME, STRING;
 
 non terminal	file_input, file_input_recoursive, stmt,simple_stmt, expr_stmt, print_stmt,del_stmt,flow_stmt,import_stmt, assert_stmt,global_stmt,exec_stmt;
 non terminal	number, binop, unop, comparison, lambdef, expr, atom, test, trailer, yield_expr, testlist_comp, listmaker, dictorsetmaker, testlist, exprlist;
 non terminal	list_iter, list_for, list_if, varargslist, defparameter_recoursive, defparameter, fpdef, fplist, name_recoursive;
 non terminal	augassign, assign_recoursive, return_stmt,raise_stmt, dotted_name, dotted_as_name, dotted_as_names, import_as_name, import_as_names, dot_rec;
 non terminal	arglist, subscriptlist, subscript,subscript_rec,sliceop,argument,argument_rec,comp_for,comp_iter,comp_if, compound_stmt;
-non terminal	if_stmt, while_stmt, for_stmt, try_stmt, with_stmt, funcdef, classdef, decorated, suite, stmt_rec, small_stmt;
-non terminal	newline_or_stmt, else_recoursive,except_clause, except_clause_recoursive, with_item, with_item_recoursive, parameters, decorators, decorator;
+non terminal	if_stmt, while_stmt, for_stmt, try_stmt, with_stmt, funcdef, classdef, decorated, suite, stmt_rec, small_stmt, small_stmt_rec;
+non terminal	newline_or_stmt, else_recoursive,except_clause, except_clause_recoursive, with_item, with_item_recoursive, decorator, decorators, parameters;
 
 
 /*Precedenza operatori: 
@@ -70,48 +173,87 @@ precedence right MULTMULT;
 * NB: compound_stmt in single_input is followed by extra NEWLINE!
 */
 
-file_input                ::= file_input_recoursive|;
-
-file_input_recoursive     ::= //NEWLINE | stmt | stmt file_input_recoursive
-                            //| NEWLINE file_input_recoursive
-                            newline_or_stmt | newline_or_stmt file_input_recoursive
-                            ;
-newline_or_stmt			::= NEWLINE | stmt;
+file_input	::= file_input_recoursive {:
+								try {
+									BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
+									String outText = parser.outputBuffer.toString();
+									out.write(outText);
+									out.close();
+								}
+                                catch (IOException e)
+                                {
+                                	e.printStackTrace();
+                                }
+                                :};
+file_input_recoursive		::= NEWLINE file_input_recoursive:f {:RESULT = "\n"+f; dumpln("\n"+f);:}
+								| stmt:s file_input_recoursive:f 
+								{:
+									RESULT = s.toString() + f.toString();
+									if(s==null && f!=null)
+										dumpln(f.toString());
+									else if (s!=null && f == null)
+										dumpln(s.toString());
+									else if (s!=null && f != null)
+										dumpln(s.toString() + f.toString());
+								:}
+								| {:RESULT = "";:}
+								;
+//file_input_recoursive     ::= newline_or_stmt | file_input_recoursive newline_or_stmt;
+//newline_or_stmt			::= NEWLINE | stmt;
 
 decorator				::= AT dotted_name NEWLINE
 							| AT dotted_name LPAREN RPAREN NEWLINE
 							| AT dotted_name LPAREN arglist RPAREN NEWLINE
 							;
-decorators				::= decorator | decorator decorators;
+decorators				::= decorator | decorators decorator ;
 decorated				::= decorators classdef | decorators funcdef;
-funcdef					::= DEF NAME parameters COLON suite;
-parameters				::= LPAREN RPAREN | LPAREN varargslist RPAREN;
-varargslist				::= defparameter_recoursive:d {:RESULT = d; :}
-							| defparameter_recoursive:d MULT NAME:n {:RESULT = d+"*"+n; :}
+funcdef					::= DEF NAME:n parameters:p COLON suite:s {:RESULT = "function " + n +" "+ p.toString() + " " + s.toString() + " end";:};
+parameters				::= LPAREN RPAREN {:RESULT = "()";:} | LPAREN varargslist:v RPAREN {:RESULT = "(" + v.toString() + ")";:};
+
+varargslist				::= defparameter_recoursive:d {:RESULT = d.toString(); :}
+							| defparameter_recoursive:d MULT NAME {:RESULT = d+",..."; :}
 							| defparameter_recoursive:d MULTMULT NAME:n {:RESULT = d+"**"+n; :}
 							| defparameter_recoursive:d MULT NAME:n1 COMMA MULTMULT NAME:n2 {:RESULT = d+"*"+n1+",**"+n2; :}
 							| MULT NAME:n {:RESULT="*"+n;:}
 							| MULT NAME:n1 COMMA MULTMULT NAME:n2 {:RESULT="*"+n1+",**"+n2;:}
 							| MULTMULT NAME:n {:RESULT="**"+n;:}
 							;
-defparameter_recoursive	::= defparameter:d {:RESULT=d;:} | defparameter:d COMMA {:RESULT = d+",";:} 
-							| defparameter:d COMMA defparameter_recoursive:dr {:RESULT = d+","+dr;:} 
+defparameter_recoursive	::= defparameter:d {:RESULT=d;:} 
+							//| defparameter:d COMMA {:RESULT = d+",";:} 
+							| defparameter_recoursive:dr COMMA defparameter:d   {:RESULT = dr+","+d;:} 
 							;
 defparameter			::= fpdef:f {:RESULT = f;:} | fpdef:f ASSIGN test:t {:RESULT=f+"="+t;:};
 fpdef					::= NAME:n {:RESULT = n;:} | LPAREN fplist:f RPAREN {:RESULT="("+f+")";:};
-fplist					::= fpdef:f {:RESULT = f;:} | fpdef:f COMMA {:RESULT = f+",";:} | fpdef:f COMMA fplist:fl {:RESULT = f+","+fl;:};
-
-stmt                    ::= simple_stmt | compound_stmt;
-simple_stmt				::= small_stmt:s NEWLINE {:RESULT = s.toString()+"\n";:}
-							| small_stmt:s SEMI NEWLINE {:RESULT = s.toString()+";\n";:}
-							| small_stmt SEMI simple_stmt
+fplist					::= fpdef:f {:RESULT = f;:} 
+							//| fpdef:f COMMA {:RESULT = f+",";:} 
+							| fplist:fl COMMA fpdef:f  {:RESULT = fl+","+f;:}
 							;
-small_stmt				::= expr_stmt:e {:RESULT =e; System.out.println("Found expr_stmt"); System.out.println(e);:}
-							| print_stmt:p {:RESULT = p; System.out.println("Found print_stmt");:}
+
+stmt                    ::= simple_stmt:s 
+							{:
+								RESULT = s;
+								//System.out.println("simple_stmt: " + s.toString());
+							:} 
+							| compound_stmt:compound
+							{:
+								RESULT = compound;
+							:}
+							;
+
+simple_stmt		::= small_stmt:s NEWLINE {:RESULT = s.toString()+"\n";:} 
+					| small_stmt:s SEMI NEWLINE {:RESULT = s.toString()+";\n";:}
+					| small_stmt:s small_stmt_rec:srec NEWLINE {:RESULT = s.toString()+ srec.toString() + "\n";:}
+					| small_stmt:s small_stmt_rec:srec SEMI NEWLINE {:RESULT = s.toString()+ srec.toString() + ";\n";:}
+					;
+small_stmt_rec	::= SEMI small_stmt:s {:RESULT = ";"+s.toString();:} 
+					| small_stmt_rec:srec SEMI small_stmt:s {:RESULT = srec.toString()+";"+s.toString();:}
+					;
+small_stmt				::= expr_stmt:e {:RESULT =e.toString(); System.out.println("Found expr_stmt"); System.out.println(e);:}
+							| print_stmt:p {:RESULT = p.toString(); System.out.println("small_stmt->print_stmt");:}
 							| del_stmt:d {:RESULT=d; System.out.println("Found del_stmt");:}
 							| PASS:p {:RESULT=p; System.out.println("Found PASS_stmt");:}
 							| flow_stmt {:System.out.println("Found flow_stmt");:}
-							| import_stmt:i {:RESULT=i; System.out.println("Found import_stmt: " + i);:}
+							| import_stmt:i {:System.out.println("Found import_stmt: " + i);:}
                  			| assert_stmt {:System.out.println("Found assert_stmt");:}
                  			| global_stmt {:System.out.println("Found global_stmt");:}
                  			| exec_stmt {:System.out.println("Found exec_stmt");:}
@@ -123,15 +265,15 @@ expr_stmt				::= testlist:t {:RESULT=t; System.out.println("Found testlist");:}
 augassign				::= PLUSEQ:op {:RESULT=op;:}| MINUSEQ:op {:RESULT=op;:} | MULTEQ:op {:RESULT=op;:} 
 							| DIVEQ:op {:RESULT=op;:} | MODEQ:op {:RESULT=op;:} | ANDEQ:op {:RESULT=op;:} 
 							| OREQ:op {:RESULT=op;:} | EXPEQ:op {:RESULT=op;:} | RSEQ:op {:RESULT=op;:} | LSEQ:op {:RESULT=op;:};
-print_stmt				::= PRINT {:RESULT = "print";:} | PRINT testlist:t {:RESULT = "print" + t.toString();:}| PRINT RSHIFT testlist:t {:RESULT = "print >>" + t.toString();:};
+print_stmt				::= PRINT {:System.out.println("print");RESULT = "print ";:} | PRINT testlist:t {:RESULT = "print (" + t.toString()+")";:}| PRINT RSHIFT testlist:t {:RESULT = "print >>" + t.toString();:};
 del_stmt				::= DEL exprlist;
-flow_stmt				::= BREAK {:RESULT="break";:}
-							| CONTINUE {:RESULT="continue";:}
-							| return_stmt:r {:RESULT=r;:}
-							| raise_stmt:r {:RESULT=r;:}
-							| yield_expr:y {:RESULT=y;:}
+flow_stmt				::= BREAK {:RESULT = "break ";:}
+							| CONTINUE 
+							| return_stmt:r {:RESULT = r;:}
+							| raise_stmt {:pSemWarning("Found raise statement, not supported in LUA");:}
+							| yield_expr:y {:RESULT = y;:}
 							;
-return_stmt				::= RETURN testlist;
+return_stmt				::= RETURN testlist:t {:RESULT = "return " + t;:};
 raise_stmt				::= RAISE test | RAISE test COMMA test | RAISE test COMMA test COMMA test;
 import_stmt				::= IMPORT dotted_as_names:d {:RESULT = "import " + d;:}
 							| FROM dotted_name:d IMPORT MULT {:RESULT = "from " + d + " import*";:}
@@ -144,42 +286,68 @@ import_stmt				::= IMPORT dotted_as_names:d {:RESULT = "import " + d;:}
 							| FROM DOT dot_rec:d IMPORT LPAREN import_as_names:i RPAREN {:RESULT = "from." + d+" import("+i.toString()+")";:}
 							| FROM DOT dot_rec:d IMPORT import_as_names:i {:RESULT = "from." + d+" import "+i;:}
 							;
-dotted_as_names			::= dotted_as_name:d {:RESULT=d;:} | dotted_as_name:d COMMA dotted_as_names:ds {:RESULT=d+","+ds;:};
+dotted_as_names			::= dotted_as_name:d {:RESULT=d;:} |dotted_as_names:ds COMMA dotted_as_name:d   {:RESULT=ds+","+d;:};
 dotted_as_name			::= dotted_name:d {:RESULT=d;:} | dotted_name:d AS NAME:n {:RESULT = d+"as"+n;:};
 dotted_name				::= NAME:n {:RESULT=n;:} | NAME:n DOT dotted_name:d {:RESULT=n+"."+d;:};
 import_as_names			::= import_as_name:i {:RESULT= i;:} | import_as_name:i COMMA import_as_names:is {:RESULT=i+","+is;:};
 import_as_name			::= NAME:n {:RESULT=n;:} | NAME:n1 AS NAME:n2 {:RESULT=n1+"as"+n2;:};
-dot_rec					::= DOT {:RESULT=".";:} | DOT dot_rec:d {:RESULT="."+d;:};
-global_stmt				::= GLOBAL name_recoursive:n {:RESULT="global"+n.toString();:};
+dot_rec					::= DOT {:RESULT=".";:} |  DOT dot_rec:d {:RESULT="."+d;:};
+global_stmt				::= GLOBAL name_recoursive:n {:RESULT="global "+n.toString();:};
 name_recoursive			::= NAME:n {:RESULT=n;:} | NAME:n COMMA name_recoursive:nr {:RESULT=n+","+nr;:};
 exec_stmt				::= EXEC expr | EXEC expr IN test | EXEC expr IN test COMMA test;
 assert_stmt				::= ASSERT testlist;
 
 
-compound_stmt			::= if_stmt:if_stmt {:System.out.println("if_stmt"); System.out.println(if_stmt);:}
-							| while_stmt {:System.out.println("while_stmt");:}
-							| for_stmt {:System.out.println("for_stmt");:}
+
+compound_stmt			::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt);:}
+							| while_stmt:w 
+							{:
+								RESULT = w.toString();
+								System.out.println("compound_stmt-> while_stmt");
+							:}
+							| for_stmt:f 
+							{:
+								System.out.println("for_stmt: " + f);
+								RESULT = f.toString();
+							:}
 							| try_stmt {:System.out.println("try_stmt");:}
 							| with_stmt {:System.out.println("with_stmt");:}
-							| funcdef {:System.out.println("funcdef");:}
+							| funcdef:f {:System.out.println("funcdef: " + f); RESULT = f.toString();:}
 							| classdef {:System.out.println("classdef");:}
 							| decorated {:System.out.println("decorated");:}
 							;
-if_stmt					::= IF test COLON suite else_recoursive
-							| IF test:t COLON suite:s {:RESULT="if " + t + ":" + s;:}
-							| IF test COLON suite ELSE COLON suite
-							| IF test COLON suite else_recoursive ELSE COLON suite
+if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec {:RESULT = "if " + t.toString() + " then " + s.toString() + " " + else_rec + " end";:}
+							| IF test:t COLON suite:s {:RESULT="if " + t + " then " + s + " end";:}
+							| IF test:t COLON suite:s1 ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + " else " + s2.toString() + " end";:}
+							| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + " " + else_rec + " else " + s2.toString() + " end";:}
 							;
-else_recoursive			::= ELIF test COLON suite | ELIF test COLON suite else_recoursive;
+else_recoursive			::= ELIF test:t COLON suite:s {:RESULT = "elseif " + t.toString() + " then " + s.toString();:}
+							| ELIF test:t COLON suite:s else_recoursive:else_rec {:RESULT = "elseif " + t.toString() + " then " + s.toString() + else_rec;:}
+							;
 
-while_stmt				::= WHILE test COLON suite | WHILE test COLON suite ELSE COLON suite;
-for_stmt				::= FOR exprlist IN testlist COLON suite | FOR exprlist IN testlist COLON suite ELSE COLON suite;
-try_stmt				::= TRY COLON suite FINALLY COLON suite
-							| TRY COLON suite except_clause_recoursive
-							| TRY COLON suite except_clause_recoursive ELSE COLON suite
-							| TRY COLON suite except_clause_recoursive FINALLY COLON suite
-							| TRY COLON suite except_clause_recoursive ELSE COLON suite FINALLY COLON suite
-							;
+while_stmt	::= WHILE test:t COLON suite:s 
+				{:
+					//System.out.println("while_stmt->WHILE test COLON suite");
+					RESULT = "while " + t.toString() + " do " + s.toString() + " end";
+					//dumpln("while " + t.toString() + " do " + s.toString() + " end");
+				:} 
+				| WHILE test:t COLON suite:s1 ELSE COLON suite:s2
+				{:
+					RESULT = new String[]{t.toString(),s1.toString(),s2.toString()};
+				:} 
+				;
+for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
+				{:
+					RESULT = "for "+ e+" in "+t+" do "+s.toString()+" end";
+				:} 
+				| FOR exprlist IN testlist COLON suite ELSE COLON suite
+				;
+try_stmt	::= TRY COLON suite FINALLY COLON suite
+				| TRY COLON suite except_clause_recoursive
+				| TRY COLON suite except_clause_recoursive ELSE COLON suite
+				| TRY COLON suite except_clause_recoursive FINALLY COLON suite
+				| TRY COLON suite except_clause_recoursive ELSE COLON suite FINALLY COLON suite
+				;
 except_clause_recoursive ::= except_clause COLON suite | except_clause COLON suite except_clause_recoursive;
 except_clause			::= EXCEPT 
 						| EXCEPT test 
@@ -190,10 +358,22 @@ with_stmt				::= WITH with_item_recoursive COLON suite;
 with_item_recoursive	::= with_item | with_item COMMA with_item_recoursive;
 with_item				::= test | test AS expr;
 
-suite					::= simple_stmt:simple {:RESULT = simple;:} | NEWLINE INDENT stmt_rec DEDENT;
-stmt_rec				::= stmt:s {:RESULT = s;:} | stmt stmt_rec;
+suite	::= simple_stmt:simple {:System.out.println("suite simple: " + simple.toString());RESULT = "\n"+simple.toString();:} 
+			| NEWLINE INDENT stmt_rec:s DEDENT 
+			{:
+				RESULT = "\n\t" + s;
+				//System.out.println("suite->NEWLINE INDENT stmt_rec DEDENT: " + s);
+				System.out.println("token: " + parser.getToken());
+			:}
+			;
+							
+stmt_rec	::= stmt:s {:System.out.println("stmt_rec->stmt: " + s); RESULT = s;:} 
+				| stmt_rec:sr stmt:s {:System.out.println("stmt_rec->stmt_rec stmt: " + sr + " " + s); RESULT = sr.toString() + " " +s.toString();:}
+				;
 
-assign_recoursive		::= ASSIGN testlist:t {:RESULT ="="+t.toString();:} | ASSIGN testlist:t assign_recoursive:ass_rec {:RESULT ="="+t.toString()+ass_rec.toString();:}; 
+assign_recoursive		::= ASSIGN testlist:t {:RESULT ="="+t.toString();:} 
+							| ASSIGN testlist:t assign_recoursive:ass_rec {:RESULT ="="+t.toString()+ass_rec.toString();:}
+							; 
 test					::= comparison:c {:RESULT = c;:} | lambdef:l {:RESULT = l;:};
 comparison				::= expr:e {:RESULT = e;:} | expr:e binop:binop comparison:comparison {:RESULT = e.toString()+binop.toString()+comparison.toString();:};
 expr					::= atom:a {:RESULT = a;:} | atom:a trailer:t {:RESULT = a.toString() + t.toString();:};
@@ -246,8 +426,8 @@ classdef				::= CLASS NAME COLON suite
 							| CLASS NAME LPAREN testlist RPAREN COLON suite
 							;
 
-arglist					::=	argument
-							| argument argument_rec
+arglist					::=	argument:a {:RESULT = a;:}
+							| argument:a argument_rec:ar {:RESULT = a + ar.toString();:}
 							| MULT test
 							| MULT test argument_rec
 							| MULT test COMMA MULTMULT test
@@ -258,18 +438,25 @@ arglist					::=	argument
 							//| argument argument_rec COMMA MULT test argument_rec COMMA MULTMULT test
 							//| argument argument_rec COMMA MULTMULT test
 							;
-argument_rec			::= COMMA argument | COMMA argument argument_rec | COMMA;
-argument				::= test | test comp_for | test:t1 ASSIGN:assign test:t2 {:RESULT = t1.toString()+assign.toString()+t2.toString();:};
-
-list_iter				::= list_for:l {:RESULT=l;:} | list_if:l {:RESULT=l;:};
-list_for				::= FOR exprlist:e IN testlist:t {:RESULT = "for"+e.toString()+"in"+t.toString();:} 
-							| FOR exprlist:e IN testlist:t list_iter:l {:RESULT = "for"+e.toString()+"in"+t.toString()+l.toString();:}
+argument_rec			::= COMMA argument:a {:RESULT = ","+a;:} 
+							| COMMA argument:a argument_rec:ar {:RESULT = ","+a+ar;:}
+							| COMMA{:RESULT = ",";:}
 							;
-list_if					::= IF test:t {:RESULT="if"+t.toString();:} | IF test:t list_iter:l {:RESULT = "if"+t.toString()+l.toString();:};
+argument				::= test:t {:RESULT = t.toString();:} 
+							| test:t comp_for:c {:RESULT = t.toString() + " " +c.toString();:} 
+							| test:t1 ASSIGN:assign test:t2 {:RESULT = t1.toString()+assign.toString()+t2.toString();:};
 
-comp_iter				::= comp_for | comp_if;
-comp_for				::= FOR exprlist IN test | FOR exprlist IN test comp_iter;
-comp_if					::= IF test | IF test comp_iter; 
+list_iter				::= list_for:l {:RESULT=l.toString();:} | list_if:l {:RESULT=l.toString();:};
+list_for				::= FOR exprlist:e IN testlist:t {:RESULT = "for "+e.toString()+" in "+t.toString();:} 
+							| FOR exprlist:e IN testlist:t list_iter:l {:RESULT = "for "+e.toString()+" in "+t.toString()+l.toString();:}
+							;
+list_if					::= IF test:t {:RESULT="if "+t.toString();:} | IF test:t list_iter:l {:RESULT = "if "+t.toString()+l.toString();:};
+
+comp_iter				::= comp_for:l {:RESULT=l.toString();:} | comp_if:l {:RESULT=l.toString();:};
+comp_for				::= FOR exprlist:e IN test:t {:RESULT = "for "+e.toString()+" in "+t.toString();:} 
+							| FOR exprlist:e IN test:t comp_iter:c {:RESULT = "for "+e.toString()+" in "+t.toString()+c.toString();:}
+							;
+comp_if					::= IF test:t {:RESULT="if "+t.toString();:} | IF test:t comp_iter:c {:RESULT = "if "+t.toString()+c.toString();:}; 
 
 
 binop 					::= PLUS:p {:RESULT = p;:} | MINUS:m {:RESULT = m;:}| MULT:m {:RESULT = m;:}
@@ -290,334 +477,3 @@ number					::= FLOAT:f {:RESULT = Float.parseFloat(f.toString());:}
 							| OCT:o {:RESULT = o.toString();:}
 							| BIN:b {:RESULT = b.toString();:}
 							;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-terminal        AND, AS, ASSERT, BREAK, CLASS, CONTINUE;
-terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
-terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
-terminal        IN, IS, LAMBDA, NOT, OR, PASS;
-terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH;
-terminal        YIELD, TRIDOT, DIVDIV;
-terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
-terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
-terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
-terminal		STRING, DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
-terminal        NAME, NEWLINE, MULTMULT, INDENT, DEDENT;
-
-non terminal	atom, literal,list_for, list_iter, list_if,or_test, comp_for, comp_iter, comp_if;
-non terminal	power, shift_expr, and_expr, xor_expr, and_test, not_test, file_input, file_input_recoursive, stmt, number;
-non terminal	simple_stmt, compound_stmt, del_stmt, print_stmt, return_stmt, raise_stmt, flow_stmt, global_stmt, expr_stmt;
-non terminal	assert_stmt, pass_stmt, import_stmt, exec_stmt,comparison, comp_operator;
-non terminal	assign_testlist_rec, assign_yield_rec, testlist, augassign, yield_expr;
-non terminal	test_recoursive, test, exprlist, dotted_name, import_as_names, dotted_as_name, name_recoursive;
-non terminal	import_name, import_from, dotted_as_names, dot_recoursive, import_as_name, except_clause_recoursive, except_clause;
-non terminal	expr, if_stmt, while_stmt, for_stmt, with_stmt,try_stmt, funcdef, classdef, decorated, else_recoursive, suite;
-non terminal	with_item, with_item_recoursive, stmt_recoursive, lambdef;
-non terminal	arith_expr, term, factor, trailer_recoursive, trailer, testlist_comp, listmaker,dictorsetmaker, varargslist, arglist, subscriptlist, subscript, sliceop, test_comma_colon_rec;
-non terminal	argument, argument_rec, testlist_safe, old_test, old_lambdef, decorator, decorators, parameters;
-non terminal	fpdef_recoursive, fpdef, fplist, comma_test_rec, dictmakerclause, setmakerclause;*/
-
-/*Precedenza operatori: 
-	lambda	Lambda expression
-	if – else	Conditional expression
-	or	Boolean OR
-	and	Boolean AND
-	not x	Boolean NOT
-	in, not in, is, is not, <, <=, >, >=, <>, !=, ==	Comparisons, including membership tests and identity tests,
-	|	Bitwise OR
-	^	Bitwise XOR
-	&	Bitwise AND
-	<<, >>	Shifts
-	+, -	Addition and subtraction
-	*, /, //, %	Multiplication, division, remainder [8]
-	+x, -x, ~x	Positive, negative, bitwise NOT
-	**	Exponentiation
-*/
-/*
-precedence left LAMBDA;
-precedence left OR;
-precedence left AND;
-precedence left NOT;
-precedence left MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ, IN, IS;
-precedence left PIPE;
-precedence left EXPON;
-precedence left ECOM;
-precedence left LSHIFT, RSHIFT;
-precedence left PLUS, MINUS;
-precedence left MULT, DIVIDE, MOD;
-precedence left TILDE;
-precedence right MULTMULT;
-precedence left LPAREN;
-
-file_input                ::= file_input_recoursive;
-
-file_input_recoursive     ::= NEWLINE file_input_recoursive
-                            | stmt file_input_recoursive
-                            |
-                            ;
-
-decorator				::= AT dotted_name NEWLINE 
-							| AT dotted_name LPAREN RPAREN NEWLINE
-							| AT dotted_name LPAREN arglist RPAREN NEWLINE
-							;
-decorators				::= decorator | decorator decorators;
-decorated				::= decorators classdef | decorators funcdef;
-funcdef					::= DEF NAME parameters COLON suite;
-
-parameters				::= LPAREN varargslist RPAREN;*/
-/*
-varargslist: ((fpdef ['=' test] ',')*
-              ('*' NAME [',' '**' NAME] | '**' NAME) |
-              fpdef ['=' test] (',' fpdef ['=' test])* [','])
-*/
-/*
-varargslist				::= MULT NAME 
-							| MULT NAME COMMA MULTMULT NAME 
-							| MULTMULT NAME
-							| fpdef_recoursive MULT NAME
-							| fpdef_recoursive MULT NAME COMMA MULTMULT NAME
-							| fpdef_recoursive MULTMULT NAME
-							| fpdef 
-							| fpdef ASSIGN test
-							| fpdef_recoursive
-							;
-fpdef_recoursive		::= fpdef COMMA 
-							| fpdef ASSIGN test COMMA 
-							| fpdef COMMA fpdef_recoursive 
-							| fpdef ASSIGN test COMMA fpdef_recoursive
-							;
-fpdef					::= NAME | LPAREN fplist RPAREN;
-fplist					::= fpdef COMMA | fpdef COMMA fplist;
-
-stmt                    ::= simple_stmt | simple_stmt SEMI | compound_stmt ;
-
-simple_stmt				::= expr_stmt
-							| print_stmt
-							| del_stmt
-							| pass_stmt
-							| flow_stmt
-							| import_stmt
-                 			| assert_stmt
-                 			| global_stmt
-                 			| exec_stmt
-			                ;
-
-expr_stmt			::= testlist
-						| testlist augassign yield_expr
-						| testlist augassign testlist
-						| testlist assign_yield_rec
-						| testlist assign_testlist_rec
-						;
-assign_yield_rec	::= ASSIGN yield_expr | ASSIGN yield_expr assign_yield_rec;
-assign_testlist_rec ::= ASSIGN testlist test | ASSIGN testlist assign_testlist_rec;
-augassign			::= PLUSEQ | MINUSEQ | MULTEQ | DIVEQ | MODEQ | ANDEQ | OREQ | EXPEQ | RSEQ | LSEQ;*/
-/*Per l'assegnamento standard vengono applicate dall'interprete restrizioni aggiuntive*/
-/*
-print_stmt			::= PRINT test_recoursive test
-						| PRINT test_recoursive
-						| PRINT RSHIFT test 
-						| PRINT RSHIFT test_recoursive 
-						| PRINT RSHIFT test_recoursive test
-						;
-test_recoursive		::= test COMMA | test COMMA test_recoursive;
-
-del_stmt			::= DEL exprlist;
-pass_stmt			::= PASS;
-flow_stmt			::= BREAK 
-						| CONTINUE 
-						| return_stmt 
-						| raise_stmt 
-						| yield_expr
-						;
-return_stmt			::= RETURN testlist;
-raise_stmt			::= RAISE test | RAISE test COMMA test | RAISE test COMMA test COMMA test;
-
-import_stmt			::= import_name | import_from;
-import_name			::= IMPORT dotted_as_names;
-import_from			::= FROM dotted_name IMPORT MULT
-						| FROM dotted_name IMPORT LPAREN import_as_names RPAREN
-						| FROM dotted_name IMPORT import_as_names
-						| FROM dot_recoursive dotted_name IMPORT MULT
-						| FROM dot_recoursive dotted_name IMPORT LPAREN import_as_names RPAREN
-						| FROM dot_recoursive dotted_name IMPORT import_as_names
-						| FROM dot_recoursive IMPORT MULT
-						| FROM dot_recoursive IMPORT LPAREN import_as_names RPAREN
-						| FROM dot_recoursive IMPORT import_as_names
-						;
-dot_recoursive		::= DOT | DOT dot_recoursive;
-import_as_name		::= NAME | NAME AS NAME;
-dotted_as_name		::= dotted_name | dotted_name AS NAME;
-dotted_name			::= NAME | NAME DOT dotted_name;
-import_as_names		::= import_as_name | import_as_name COMMA import_as_names;
-dotted_as_names		::= dotted_as_name | dotted_as_name COMMA dotted_as_names;
-
-global_stmt			::= GLOBAL name_recoursive;
-name_recoursive		::= NAME | NAME COMMA name_recoursive;
-
-exec_stmt			::= EXEC expr | EXEC expr IN test | EXEC expr IN test COMMA test; 
-assert_stmt			::= ASSERT test | ASSERT test COMMA test;
-
-compound_stmt		::= if_stmt
-						| while_stmt
-						| for_stmt
-						| try_stmt
-						| with_stmt
-						| funcdef
-						| classdef
-						| decorated
-						;
-
-if_stmt				::= IF test COLON suite else_recoursive
-						| IF test COLON suite
-						| IF test COLON suite ELSE COLON suite
-						| IF test COLON suite else_recoursive ELSE COLON suite
-						;
-else_recoursive		::= ELIF test COLON suite | ELIF test COLON suite else_recoursive;
-
-while_stmt			::= WHILE test COLON suite | WHILE test COLON suite ELSE COLON suite;
-for_stmt			::= FOR exprlist IN testlist COLON suite | FOR exprlist IN testlist COLON suite ELSE COLON suite;
-try_stmt			::= TRY COLON suite FINALLY COLON suite
-					| TRY COLON suite except_clause_recoursive
-					| TRY COLON suite except_clause_recoursive ELSE COLON suite
-					| TRY COLON suite except_clause_recoursive FINALLY COLON suite
-					| TRY COLON suite except_clause_recoursive ELSE COLON suite FINALLY COLON suite
-					;
-except_clause_recoursive ::= except_clause COLON suite | except_clause COLON suite except_clause_recoursive;
-except_clause			::= EXCEPT 
-						| EXCEPT test 
-						| EXCEPT test AS test 
-						| EXCEPT test COMMA test;
-
-with_stmt				::= WITH with_item_recoursive COLON suite;
-with_item_recoursive	::= with_item | with_item COMMA with_item_recoursive;
-with_item				::= test | test AS expr;
-suite					::= simple_stmt | NEWLINE INDENT stmt_recoursive DEDENT;
-stmt_recoursive			::= stmt | stmt stmt_recoursive;
-
-testlist_safe			::= old_test;
-old_test				::= or_test | old_lambdef;
-old_lambdef				::= LAMBDA COLON old_test | LAMBDA varargslist COLON old_test;
-
-test					::= or_test | lambdef;*/
-
-/*Operazioni booleane*/
-/*
-or_test					::= and_test | and_test OR or_test ;
-and_test				::= not_test | and_test AND not_test;
-not_test				::= comparison;
-comparison				::= expr | expr comp_operator comparison;
-comp_operator 			::=  MINOR | MAIOR | EQ | MAIEQ | MINEQ | NEQ
-                   			| IS | IS NOT | IN | NOT IN;
-expr					::= xor_expr | xor_expr PIPE expr;*/
-/*Operazioni binarie bit a bit*/
-/*
-xor_expr				::= and_expr | and_expr EXPON xor_expr;
-and_expr				::= shift_expr | shift_expr ECOM and_expr;
-shift_expr				::= arith_expr | arith_expr LSHIFT shift_expr | arith_expr RSHIFT shift_expr;
-arith_expr				::= term | term PLUS arith_expr | term MINUS arith_expr;
-term					::= factor
-							| factor MULT term
-							| factor DIVIDE term
-							| factor MOD term
-							| factor DIVDIV term
-						;
-factor					::= PLUS factor
-							| MINUS factor
-							| TILDE	factor
-							| power
-							;
-power					::= atom | atom MULTMULT factor | atom trailer_recoursive | atom trailer_recoursive MULTMULT factor;				
-trailer_recoursive		::= trailer | trailer trailer_recoursive;*/
-/*
-Atoms elementi base delle espressioni. I più semplici
-sono identificatori e letterali, anche le espressioni racchiuse
-tra parentesi sono considerate atoms.
-*/
-/*
-atom					::= LPAREN RPAREN
-							| LPAREN yield_expr RPAREN
-							| LPAREN testlist_comp RPAREN
-							| LBRACK RBRACK
-							| LBRACK listmaker RBRACK
-							| LCURLY RCURLY
-							| LCURLY dictorsetmaker RCURLY //manca 'testlist1'
-							| NAME | literal;
-literal					::= STRING | number;
-listmaker				::= test list_for | test test_recoursive | test test_recoursive COMMA;
-testlist_comp			::= test comp_for | test test_recoursive;
-lambdef					::= LAMBDA COLON test | LAMBDA varargslist COLON test;
-trailer					::= LPAREN RPAREN | LPAREN arglist RPAREN
-							| LBRACK RBRACK | LBRACK subscriptlist RBRACK
-							| DOT NAME;
-subscriptlist			::= subscript | subscript COMMA subscriptlist;
-subscript				::= TRIDOT
-							| test
-							| COLON
-							| test COLON
-							| test COLON test
-							| test COLON test sliceop
-							| test COLON sliceop
-							| COLON test
-							| COLON test sliceop
-							| COLON sliceop
-							;
-sliceop					::= COLON | COLON test;
-exprlist				::= expr | expr COMMA exprlist;
-testlist				::= test | test COMMA testlist;
-dictorsetmaker			::= test dictmakerclause
-							| test setmakerclause
-							;
-dictmakerclause			::= COLON test
-							| COLON test comp_for
-							| COLON test test_comma_colon_rec
-							;
-setmakerclause			::= comp_for | comma_test_rec;
-comma_test_rec			::= COMMA test | comma_test_rec test;
-test_comma_colon_rec	::= COMMA test COLON test | test_comma_colon_rec COMMA test COLON test;	
-classdef				::= CLASS NAME COLON suite
-							| CLASS NAME LPAREN RPAREN COLON suite
-							| CLASS NAME LPAREN test testlist COLON suite
-							;
-arglist					::=	argument
-							| argument argument_rec
-							| MULT test
-							| MULT test argument_rec
-							| MULT test COMMA MULTMULT test
-							| MULT test argument_rec COMMA MULTMULT test
-							| MULTMULT test
-							| argument argument_rec COMMA MULT test
-							| argument argument_rec COMMA MULT test COMMA MULTMULT test
-							| argument argument_rec COMMA MULT test argument_rec COMMA MULTMULT test
-							| argument argument_rec COMMA MULTMULT test
-							;
-argument_rec			::= COMMA argument | argument_rec COMMA argument;
-argument				::= test | test comp_for | test ASSIGN test;
-
-list_iter				::= list_for | list_if;
-list_for				::= FOR exprlist IN testlist_safe | FOR exprlist IN testlist_safe list_iter;	
-list_if					::= IF old_test | IF old_test list_iter;
-
-comp_iter				::= comp_for | comp_if;
-comp_for				::= FOR exprlist IN or_test | FOR exprlist IN or_test comp_iter;
-comp_if					::= IF old_test | IF old_test list_iter;
-yield_expr				::= YIELD testlist;
-												
-number					::= FLOAT|IMAGNUM | LONGINT | DECIMAL | HEX | OCT | BIN;*/

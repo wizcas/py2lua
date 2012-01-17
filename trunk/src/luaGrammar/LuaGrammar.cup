@@ -62,7 +62,7 @@ block			::= chunk;
 stat			::= varlist ASSIGN explist {:System.out.println("varlist assign explist");:} /*Lua consente assegnazioni multiple*/
 				| functioncall
 				| DO block END
-				| WHILE exp DO block END /*costrutti if while e repeat*/
+				| WHILE exp:e DO block:b END {:System.out.println("while statement");:} /*costrutti if while e repeat*/
 				| REPEAT block UNTIL exp
 				| if_stat
 				| for_stat /*for statement*/
@@ -77,7 +77,7 @@ if_stat			::= IF exp THEN block END
 				| IF exp THEN block if_recoursive ELSE block END
 				;
 if_recoursive	::= ELSEIF exp THEN block 
-				| ELSEIF exp THEN block if_recoursive;
+				|if_recoursive ELSEIF exp THEN block ;
 /*ripete un blocco di codice incrementando la prima variabile che parte dalla prima exp
 fino alla seconda exp, incrementandosi della terza exp che è opzionale
 Oppure può ciclare in base ad una lista di nomi all'interno di una tabella*/
@@ -102,18 +102,18 @@ funcname		::= VAR_NAME:var dot_var_name {:System.out.println("funcname:" + var);
 				| VAR_NAME dot_var_name COLON VAR_NAME
 				;
 dot_var_name	::= | DOT VAR_NAME dot_var_name;
-varlist			::= var {:System.out.println("varlist->var");:} | var COMMA varlist;
+varlist			::= var | varlist var COMMA ;
 /*
 un singolo nome denota una variabile,
 le parentesi quadre denotano l'indice di una tabella,
 una pillola sintattica per ritornare l'elemento di una tabella
 è tabella.nome che sta per ["nome"]
 */
-var				::= VAR_NAME {:System.out.println("found varname");:}
+var				::= VAR_NAME
 				| prefixexp LBRACK exp RBRACK
-				| prefixexp DOT VAR_NAME {:System.out.println("found var->pref dot varname");:}
+				| prefixexp DOT VAR_NAME
 				;
-namelist		::= VAR_NAME {:System.out.println("namelist->varname"); :} | namelist COMMA VAR_NAME {:System.out.println("namelist"); :};
+namelist		::= VAR_NAME | namelist COMMA VAR_NAME {:System.out.println("namelist"); :};
 explist			::= exp_recoursive {:System.out.println("found explist"); :};
 exp_recoursive	::= exp | exp COMMA exp_recoursive {:System.out.println("exp_recoursive"); :};
 /*
@@ -127,7 +127,7 @@ exp_member		::= NIL | FALSE | TRUE
 				| function
 				| prefixexp
 				| tableconstructor
-				| TRIDOT {:System.out.println("found ...");:}
+				| TRIDOT
 				| unop exp_member
 				;
 prefixexp		::= var {: System.out.println("prefixexp->var"); :} | functioncall {: System.out.println("prefixexp->functioncall"); :}; //manca | LPAREN exp RPAREN;
@@ -151,9 +151,9 @@ function		::= FUNCTION funcbody {:System.out.println("function"); :};
 funcbody		::= LPAREN RPAREN block END {:System.out.println("functionbody");:}
 				| LPAREN parlist RPAREN block END {:System.out.println("functionbody with par");:}
 				;
-parlist			::= namelist {:System.out.println("found namelist in parlist");:}
-				| namelist COMMA TRIDOT {:System.out.println("found ... in parlist");:}
-				| TRIDOT {:System.out.println("found ... in parlist");:}
+parlist			::= namelist
+				| namelist COMMA TRIDOT
+				| TRIDOT
 				;
 tableconstructor ::= LCURLY RCURLY | LCURLY fieldlist RCURLY {: System.out.println("table constructor");:};
 fieldlist		::= field {:System.out.println("found a field"); :} 
@@ -164,18 +164,20 @@ field			::= LBRACK exp RBRACK ASSIGN exp
 				| exp
 				;
 fieldsep		::= SEMI | COMMA;
-binop 			::= PLUS | MINUS | MULT | DIVIDE | EXPON | MOD | DOTDOT
-		 		|MINOR| MINEQ| MAIOR| MAIEQ| EQ| NEQ| AND| OR
-		 		;
+binop 			::= PLUS:op {:RESULT=op;:} | MINUS:op {:RESULT=op;:} | MULT:op {:RESULT=op;:} | DIVIDE:op {:RESULT=op;:} 
+					| EXPON:op {:RESULT=op;:} | MOD:op {:RESULT=op;:} | DOTDOT:op {:RESULT=op;:}
+		 			| MINOR:op {:RESULT=op;:} | MINEQ:op {:RESULT=op;:} | MAIOR:op {:RESULT=op;:} 
+		 			| MAIEQ:op {:RESULT=op;:} | EQ:op {:RESULT=op;:} | NEQ:op {:RESULT=op;:} | AND:op {:RESULT=op;:} | OR:op {:RESULT=op;:}
+		 			;
 unop		::= MINUS | NOT | SHARP; 
-number		::= EXP {:System.out.println("found EXP"); :} 
-			| FLOAT {:System.out.println("found FLOAT"); :} 
-			| INT {:System.out.println("found INT"); :}
-			| HEX {:System.out.println("found HEX"); :}
+number		::= EXP:e {:RESULT = e; :} 
+			| FLOAT:f {:RESULT = Float.parseFloat(f.toString());:} 
+			| INT:i {:RESULT = Integer.parseInt(i.toString());:}
+			| HEX:h {:RESULT = h;:}
 			;
 string		::= NORMALSTRING | CHARSTRING|LONGSTRING;
 /*                      
-comment				::= COMMENT
-                      | LINE_COMMENT
-                      ;
+comment		::= COMMENT
+        		| LINE_COMMENT
+				;
 */

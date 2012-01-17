@@ -3,6 +3,7 @@ package pyGrammar;
 
 import java_cup.runtime.*;
 import java.io.IOException;
+import java.util.Stack;
 
 import pyGrammar.PythonSym;
 import static pyGrammar.PythonSym.*;
@@ -21,15 +22,64 @@ import static pyGrammar.PythonSym.*;
 %cupsym pyGrammar.PythonSym
 %cup
 
-%eofval{ 
-	return sym(EOF); 
+%eofval{
+       	int level  = indentStack.peek();
+		int indent = yytext().replace("\t", "        ").length();
+   
+		System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
+   
+		if (indent > level)
+		{               			
+			indentStack.push(indent);
+			System.err.println("INDENT");
+			return sym(INDENT);
+   		}
+   		else if (indent < level)
+   		{
+           	indentStack.pop();
+           	System.err.println("DEDENT");
+           	return sym(DEDENT);
+   		}
+   		return sym(EOF);
 %eofval}
 
 %init{
-	// TODO: code that goes to constructor
+	indentStack = new Stack<Integer>();
+	indentStack.push(0);
 %init}
 
 %{
+
+	private Stack<Integer> indentStack;
+	
+	private Symbol checkIndent()
+	{
+		int level  = indentStack.peek();
+		int indent = yytext().replace("\t", "        ").length();
+   
+		System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
+   
+		if (indent > level)
+		{               			
+			indentStack.push(indent);
+			System.err.println("INDENT");
+			return sym(INDENT);
+   		}
+   		else if (indent < level)
+   		{
+           	indentStack.pop();
+           	System.err.println("DEDENT");
+           	return sym(DEDENT);
+   		}
+   		System.err.println("...");
+   		return null;
+	}
+       
+	public int stackLength()
+	{
+		return indentStack.size();
+	}
+	
 	private Symbol sym(int type)
 	{
 		return sym(type, yytext());
@@ -50,7 +100,9 @@ import static pyGrammar.PythonSym.*;
 
 
 NEWLINE		=	\r|\n|\r\n
-WHITESPACE	=	[ \t]
+WHITESPACE	=	\ 
+TAB			= 	\t
+WS			=	( {WHITESPACE} | {TAB} )+
 NAME  		=   [a-zA-Z_][a-zA-Z0-9_]*
 COMMENT		= 	#([^\n|\r])*
 
@@ -96,7 +148,7 @@ MULT		= "*"
 DIVIDE		= "/"
 DIVDIV		= "//"
 MOD			= %
-EXPON		= \^
+EXPON			= \^
 MINOR		= <
 MINEQ		= "<="
 MAIOR		= >
@@ -108,42 +160,61 @@ SEMI		= ";"
 
 %%
 
-{NEWLINE}		{ System.out.println("newline"); return sym(NEWLINE); }
-{WHITESPACE}	{ System.out.println("whitespace"); }
-//{IDENTIFIER}    { System.out.println("name"); return sym(IDENTIFIER); }
+{NEWLINE}+		{ System.err.println("NEWLINE");return sym(NEWLINE); }
+^{TAB}*			{ 
+					System.err.println("TAB");
+					int level  = indentStack.peek();
+					int indent = yytext().replace("\t", "        ").length();
+					System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
+			   
+					if (indent > level)
+					{               			
+						indentStack.push(indent);
+						System.err.println("INDENT");
+						return sym(INDENT);
+			   		}
+			   		else if (indent < level)
+			   		{
+			           	indentStack.pop();
+			           	System.err.println("DEDENT");
+			           	return sym(DEDENT);
+			   		}
+				}        
+^{WHITESPACE}	{}
+{WS}			{}
 
 /* Keywords */
-"and"       { return sym(AND); }
-"as"        { return sym(AS); }
-"assert"    { return sym(ASSERT); }
-"break"     { return sym(BREAK); }
-"class"     { return sym(CLASS); }
-"continue"  { return sym(CONTINUE); }
-"def"       { return sym(DEF); }
-"del"       { return sym(DEL); }
-"elif"      { return sym(ELIF); }
-"else"      { return sym(ELSE); }
-"except"    { return sym(EXCEPT); }
-"exec"      { return sym(EXEC); }
-"finally"   { return sym(FINALLY); }
-"for"       { return sym(FOR); }
-"from"      { return sym(FROM); }
-"global"    { return sym(GLOBAL); }
-"if"        { return sym(IF); }
-"import"    { return sym(IMPORT); }
-"in"        { return sym(IN); }
-"is"        { return sym(IS); }
-"lambda"    { return sym(LAMBDA); }
-"not"       { return sym(NOT); }
-"or"        { return sym(OR); }
-"pass"      { return sym(PASS); }
-"print"     { return sym(PRINT); }
-"raise"     { return sym(RAISE); }
-"return"    { return sym(RETURN); }
-"try"       { return sym(TRY); }
-"while"     { return sym(WHILE); }
-"with"      { return sym(WITH); }
-"yield"     { return sym(YIELD); }
+"and"       	{ return sym(AND); }
+"as"        	{ return sym(AS); }
+"assert"    	{ return sym(ASSERT); }
+"break"     	{ return sym(BREAK); }
+"class"     	{ return sym(CLASS); }
+"continue"  	{ return sym(CONTINUE); }
+"def"       	{ return sym(DEF); }
+"del"       	{ return sym(DEL); }
+"elif"      	{ return sym(ELIF); }
+"else"      	{ return sym(ELSE); }
+"except"    	{ return sym(EXCEPT); }
+"exec"      	{ return sym(EXEC); }
+"finally"   	{ return sym(FINALLY); }
+"for"       	{ return sym(FOR); }
+"from"      	{ return sym(FROM); }
+"global"    	{ return sym(GLOBAL); }
+"if"        	{ return sym(IF); }
+"import"    	{ return sym(IMPORT); }
+"in"        	{ return sym(IN); }
+"is"        	{ return sym(IS); }
+"lambda"    	{ return sym(LAMBDA); }
+"not"       	{ return sym(NOT); }
+"or"        	{ return sym(OR); }
+"pass"      	{ return sym(PASS); }
+"print"     	{ System.err.println("PRINT");return sym(PRINT); }
+"raise"     	{ return sym(RAISE); }
+"return"    	{ return sym(RETURN); }
+"try"       	{ return sym(TRY); }
+"while"     	{ System.err.println("WHILE");return sym(WHILE); }
+"with"      	{ return sym(WITH); }
+"yield"     	{ return sym(YIELD); }
 /*Operators*/
 {PLUS}			{return sym(PLUS);}
 {MINUS}			{return sym(MINUS);}
@@ -153,7 +224,7 @@ SEMI		= ";"
 {DIVDIV}		{return sym(DIVDIV);}
 {MOD}			{return sym(MOD);}
 {EXPON}			{return sym(EXPON);}
-{MINOR}			{return sym(MINOR);}
+{MINOR}			{System.err.println("MINOR");return sym(MINOR);}
 {MINEQ}			{return sym(MINEQ);}
 {MAIOR}			{return sym(MAIOR);}
 {MAIEQ}			{return sym(MAIEQ);}
@@ -173,7 +244,7 @@ SEMI		= ";"
 "]"				{return sym(RBRACK);}
 "{"				{return sym(LCURLY);}
 "}"				{return sym(RCURLY);}
-":"				{return sym(COLON);}
+":"				{System.err.println("COLON");return sym(COLON);}
 {ASSIGN}		{return sym(ASSIGN); }
 {SEMI}			{return sym(SEMI);}
 "@"				{return sym(AT);}
@@ -189,13 +260,15 @@ SEMI		= ";"
 "<<="			{return sym(LSEQ);}
 "**="			{return sym(EXPEQ);}
 "..."			{return sym(TRIDOT);}
-{STRING}	{ System.out.println("found string"); return sym(STRING);}
-{FLOAT}		{ System.out.println("found float"); return sym(FLOAT);}
-{IMAGNUM}	{ System.out.println("found imaginary number"); return sym(IMAGNUM);}
-{LONGINT}	{ System.out.println("found longinteger"); return sym(LONGINT);}
-{DECIMAL}	{ System.out.println("found decimal"); return sym(DECIMAL);}
-{OCT}		{ System.out.println("found oct"); return sym(OCT);}
-{HEX}		{ System.out.println("found hex"); return sym(HEX);}
-{BIN}		{ System.out.println("found bin"); return sym(BIN);}
-{NAME}    	{ System.out.println("name"); return sym(NAME); }
-{COMMENT}   { System.out.println("found comment");}
+{STRING}		{System.err.println("STRING"); return sym(STRING);}
+{FLOAT}			{return sym(FLOAT);}
+{IMAGNUM}		{ return sym(IMAGNUM);}
+{LONGINT}		{ return sym(LONGINT);}
+{DECIMAL}		{ return sym(DECIMAL);}
+{OCT}			{ return sym(OCT);}
+{HEX}			{ return sym(HEX);}
+{BIN}			{ return sym(BIN);}
+{NAME}    		{ System.err.println("NAME");return sym(NAME); }
+{COMMENT}   	{ return null;}
+
+.				{System.out.println("SCANNER ERROR: "+yytext());}
