@@ -23,23 +23,15 @@ import static pyGrammar.PythonSym.*;
 %cup
 
 %eofval{
-       	int level  = indentStack.peek();
-		int indent = yytext().replace("\t", "        ").length();
-   
-		System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
-   
-		if (indent > level)
-		{               			
-			indentStack.push(indent);
-			System.err.println("INDENT");
-			return sym(INDENT);
-   		}
-   		else if (indent < level)
-   		{
-           	indentStack.pop();
-           	System.err.println("DEDENT");
+		System.out.println("Checking indentation eofval");
+
+		if(indentStack.size()>1)
+		{   
+		   	indentStack.pop();
+           	System.err.println("EOF DEDENT");
            	return sym(DEDENT);
-   		}
+        }
+
    		return sym(EOF);
 %eofval}
 
@@ -157,30 +149,89 @@ EQ			= "=="
 NEQ			= "!="
 SEMI		= ";"
 
+%xstate linebegin
 
 %%
+/*^{TAB}*		{
+				System.out.println("tab text: " + yytext() + " line: " + yyline + " char: " + yychar + " column: " + yycolumn);
+				System.out.println("stackLength: " + stackLength());
+				int level  = indentStack.peek();
+				int indent = yytext().replace("\t", "        ").length();
+				//System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
+				if (indent > level)
+				{               			
+					indentStack.push(indent);
+					//System.err.println("INDENT");
+					return sym(INDENT);
+		   		}
+		   		else if (indent < level)
+		   		{	
+		   			
+		   				level = indentStack.pop();
+		   				//yypushback(1);
+		   			
+					//System.err.println("DEDENT");
+					return sym(DEDENT);
+		   		}
+			}    
 
-{NEWLINE}+		{ System.err.println("NEWLINE");return sym(NEWLINE); }
-^{TAB}*			{ 
-					System.err.println("TAB");
-					int level  = indentStack.peek();
-					int indent = yytext().replace("\t", "        ").length();
-					System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
+{NEWLINE}+ 		{ 
+					System.out.println("newline text: " + yytext() + " line: " + yyline + " char: " + yychar + " column: " + yycolumn);
+					System.out.println("stackLength: " + stackLength());
+					
+					//System.err.println("NEWLINE");
+			   		return sym(NEWLINE);
+				}    */
+				
+{NEWLINE}+	{ 
+				
+				yybegin(linebegin);
+				System.out.println("NEWLINE");
+				return sym(NEWLINE); 
+			}				
+<linebegin>\t+
+			{ 
+				System.out.println("TAB INTERPRETATION");
+				int level  = indentStack.peek();
+				int indent = yytext().replace("\t", "        ").length();
+				System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
 			   
-					if (indent > level)
-					{               			
-						indentStack.push(indent);
-						System.err.println("INDENT");
-						return sym(INDENT);
-			   		}
-			   		else if (indent < level)
-			   		{
-			           	indentStack.pop();
-			           	System.err.println("DEDENT");
-			           	return sym(DEDENT);
-			   		}
-				}        
-^{WHITESPACE}	{}
+				if (indent > level)
+				{               			
+					indentStack.push(indent);
+					yybegin(YYINITIAL);
+					System.out.println("INDENT");
+					return sym(INDENT);
+		   		}
+		   		else if (indent < level)
+		   		{
+		           	indentStack.pop();
+		           	yypushback(yytext().length());
+		           	yybegin(linebegin);
+		           	System.out.println("DEDENT");
+		           	return sym(DEDENT);
+		   		}
+		   		System.out.println("Going YYINITIAL");
+		   		yybegin(YYINITIAL);
+			}
+<linebegin>[^\t] 
+	{ 
+		int indent = 0;
+		int level = indentStack.peek();
+		if (indent < level)
+		{
+			indentStack.pop();
+			yypushback(yytext().length());
+           	yybegin(linebegin);
+           	System.out.println("DEDENT");
+           	return sym(DEDENT);
+		}
+		System.out.println("Pushing Back & Goin initial"); 
+		yypushback(yytext().length()); 
+		yybegin(YYINITIAL); 
+	}
+
+^{WHITESPACE}+	{}
 {WS}			{}
 
 /* Keywords */
@@ -208,11 +259,11 @@ SEMI		= ";"
 "not"       	{ return sym(NOT); }
 "or"        	{ return sym(OR); }
 "pass"      	{ return sym(PASS); }
-"print"     	{ System.err.println("PRINT");return sym(PRINT); }
+"print"     	{ return sym(PRINT); }
 "raise"     	{ return sym(RAISE); }
 "return"    	{ return sym(RETURN); }
 "try"       	{ return sym(TRY); }
-"while"     	{ System.err.println("WHILE");return sym(WHILE); }
+"while"     	{ return sym(WHILE); }
 "with"      	{ return sym(WITH); }
 "yield"     	{ return sym(YIELD); }
 /*Operators*/
@@ -224,7 +275,7 @@ SEMI		= ";"
 {DIVDIV}		{return sym(DIVDIV);}
 {MOD}			{return sym(MOD);}
 {EXPON}			{return sym(EXPON);}
-{MINOR}			{System.err.println("MINOR");return sym(MINOR);}
+{MINOR}			{return sym(MINOR);}
 {MINEQ}			{return sym(MINEQ);}
 {MAIOR}			{return sym(MAIOR);}
 {MAIEQ}			{return sym(MAIEQ);}
@@ -244,7 +295,7 @@ SEMI		= ";"
 "]"				{return sym(RBRACK);}
 "{"				{return sym(LCURLY);}
 "}"				{return sym(RCURLY);}
-":"				{System.err.println("COLON");return sym(COLON);}
+":"				{return sym(COLON);}
 {ASSIGN}		{return sym(ASSIGN); }
 {SEMI}			{return sym(SEMI);}
 "@"				{return sym(AT);}
@@ -260,7 +311,7 @@ SEMI		= ";"
 "<<="			{return sym(LSEQ);}
 "**="			{return sym(EXPEQ);}
 "..."			{return sym(TRIDOT);}
-{STRING}		{System.err.println("STRING"); return sym(STRING);}
+{STRING}		{return sym(STRING);}
 {FLOAT}			{return sym(FLOAT);}
 {IMAGNUM}		{ return sym(IMAGNUM);}
 {LONGINT}		{ return sym(LONGINT);}
@@ -268,7 +319,7 @@ SEMI		= ";"
 {OCT}			{ return sym(OCT);}
 {HEX}			{ return sym(HEX);}
 {BIN}			{ return sym(BIN);}
-{NAME}    		{ System.err.println("NAME");return sym(NAME); }
+{NAME}    		{ return sym(NAME); }
 {COMMENT}   	{ return null;}
 
 .				{System.out.println("SCANNER ERROR: "+yytext());}

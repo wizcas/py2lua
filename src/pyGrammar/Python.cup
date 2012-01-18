@@ -114,7 +114,7 @@ action code
 
 :}
 
-terminal        WS,AND, AS, ASSERT, BREAK, CLASS, CONTINUE, WHITESPACE;
+terminal        AND, AS, ASSERT, BREAK, CLASS, CONTINUE, WHITESPACE;
 terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
 terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
 terminal        IN, IS, LAMBDA, NOT, OR, PASS;
@@ -173,8 +173,9 @@ precedence right MULTMULT;
 * NB: compound_stmt in single_input is followed by extra NEWLINE!
 */
 
-file_input	::= file_input_recoursive {:
+file_input	::= file_input_recoursive:f {:
 								try {
+									dumpln(f.toString());
 									BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
 									String outText = parser.outputBuffer.toString();
 									out.write(outText);
@@ -189,12 +190,12 @@ file_input_recoursive		::= NEWLINE file_input_recoursive:f {:RESULT = "\n"+f; du
 								| stmt:s file_input_recoursive:f 
 								{:
 									RESULT = s.toString() + f.toString();
-									if(s==null && f!=null)
+									/*if(s==null && f!=null)
 										dumpln(f.toString());
 									else if (s!=null && f == null)
 										dumpln(s.toString());
 									else if (s!=null && f != null)
-										dumpln(s.toString() + f.toString());
+										dumpln(s.toString() + f.toString());*/
 								:}
 								| {:RESULT = "";:}
 								;
@@ -248,8 +249,8 @@ simple_stmt		::= small_stmt:s NEWLINE {:RESULT = s.toString()+"\n";:}
 small_stmt_rec	::= SEMI small_stmt:s {:RESULT = ";"+s.toString();:} 
 					| small_stmt_rec:srec SEMI small_stmt:s {:RESULT = srec.toString()+";"+s.toString();:}
 					;
-small_stmt				::= expr_stmt:e {:RESULT =e.toString(); System.out.println("Found expr_stmt"); System.out.println(e);:}
-							| print_stmt:p {:RESULT = p.toString(); System.out.println("small_stmt->print_stmt");:}
+small_stmt				::= expr_stmt:e {:RESULT =e.toString(); System.out.println("Found expr_stmt");:}
+							| print_stmt:p {:RESULT = p.toString();:}
 							| del_stmt:d {:RESULT=d; System.out.println("Found del_stmt");:}
 							| PASS:p {:RESULT=p; System.out.println("Found PASS_stmt");:}
 							| flow_stmt {:System.out.println("Found flow_stmt");:}
@@ -258,14 +259,14 @@ small_stmt				::= expr_stmt:e {:RESULT =e.toString(); System.out.println("Found 
                  			| global_stmt {:System.out.println("Found global_stmt");:}
                  			| exec_stmt {:System.out.println("Found exec_stmt");:}
 			                ;
-expr_stmt				::= testlist:t {:RESULT=t; System.out.println("Found testlist");:}
+expr_stmt				::= testlist:t {:RESULT=t;:}
 							| testlist:t1 augassign:a testlist:t2 {:RESULT = t1.toString() + a.toString() + t2.toString(); System.out.println("Found testlist");:}
 							| testlist:t assign_recoursive:a {:RESULT=t.toString()+a.toString();:}
 							;
 augassign				::= PLUSEQ:op {:RESULT=op;:}| MINUSEQ:op {:RESULT=op;:} | MULTEQ:op {:RESULT=op;:} 
 							| DIVEQ:op {:RESULT=op;:} | MODEQ:op {:RESULT=op;:} | ANDEQ:op {:RESULT=op;:} 
 							| OREQ:op {:RESULT=op;:} | EXPEQ:op {:RESULT=op;:} | RSEQ:op {:RESULT=op;:} | LSEQ:op {:RESULT=op;:};
-print_stmt				::= PRINT {:System.out.println("print");RESULT = "print ";:} | PRINT testlist:t {:RESULT = "print (" + t.toString()+")";:}| PRINT RSHIFT testlist:t {:RESULT = "print >>" + t.toString();:};
+print_stmt				::= PRINT {:RESULT = "print ";:} | PRINT testlist:t {:RESULT = "print (" + t.toString()+")";:}| PRINT RSHIFT testlist:t {:RESULT = "print >>" + t.toString();:};
 del_stmt				::= DEL exprlist;
 flow_stmt				::= BREAK {:RESULT = "break ";:}
 							| CONTINUE 
@@ -293,29 +294,21 @@ import_as_names			::= import_as_name:i {:RESULT= i;:} | import_as_name:i COMMA i
 import_as_name			::= NAME:n {:RESULT=n;:} | NAME:n1 AS NAME:n2 {:RESULT=n1+"as"+n2;:};
 dot_rec					::= DOT {:RESULT=".";:} |  DOT dot_rec:d {:RESULT="."+d;:};
 global_stmt				::= GLOBAL name_recoursive:n {:RESULT="global "+n.toString();:};
-name_recoursive			::= NAME:n {:RESULT=n;:} | NAME:n COMMA name_recoursive:nr {:RESULT=n+","+nr;:};
-exec_stmt				::= EXEC expr | EXEC expr IN test | EXEC expr IN test COMMA test;
-assert_stmt				::= ASSERT testlist;
+name_recoursive			::= NAME:n {:RESULT=n;:} | name_recoursive:nr COMMA NAME:n {:RESULT=nr+","+n;:};
+exec_stmt				::= EXEC expr:e {:RESULT = "exec " + e;:}| EXEC expr IN test | EXEC expr IN test COMMA test;
+assert_stmt				::= ASSERT testlist:t {:RESULT = "assert " + t;:};
 
 
 
-compound_stmt			::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt);:}
-							| while_stmt:w 
-							{:
-								RESULT = w.toString();
-								System.out.println("compound_stmt-> while_stmt");
-							:}
-							| for_stmt:f 
-							{:
-								System.out.println("for_stmt: " + f);
-								RESULT = f.toString();
-							:}
-							| try_stmt {:System.out.println("try_stmt");:}
-							| with_stmt {:System.out.println("with_stmt");:}
-							| funcdef:f {:System.out.println("funcdef: " + f); RESULT = f.toString();:}
-							| classdef {:System.out.println("classdef");:}
-							| decorated {:System.out.println("decorated");:}
-							;
+compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt);:}
+					| while_stmt:w {:RESULT = w.toString();:}
+					| for_stmt:f {:System.out.println("for_stmt: " + f);RESULT = f.toString();:}
+					| try_stmt:t {:System.out.println("try_stmt");RESULT = t.toString();:}
+					| with_stmt {:System.out.println("with_stmt");:}
+					| funcdef:f {:System.out.println("funcdef: " + f); RESULT = f.toString();:}
+					| classdef {:System.out.println("classdef");:}
+					| decorated {:System.out.println("decorated");:}
+					;
 if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec {:RESULT = "if " + t.toString() + " then " + s.toString() + " " + else_rec + " end";:}
 							| IF test:t COLON suite:s {:RESULT="if " + t + " then " + s + " end";:}
 							| IF test:t COLON suite:s1 ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + " else " + s2.toString() + " end";:}
@@ -328,7 +321,7 @@ else_recoursive			::= ELIF test:t COLON suite:s {:RESULT = "elseif " + t.toStrin
 while_stmt	::= WHILE test:t COLON suite:s 
 				{:
 					//System.out.println("while_stmt->WHILE test COLON suite");
-					RESULT = "while " + t.toString() + " do " + s.toString() + " end";
+					RESULT = "while " + t.toString() + " do " + s.toString() + " end\n";
 					//dumpln("while " + t.toString() + " do " + s.toString() + " end");
 				:} 
 				| WHILE test:t COLON suite:s1 ELSE COLON suite:s2
@@ -349,26 +342,27 @@ try_stmt	::= TRY COLON suite FINALLY COLON suite
 				| TRY COLON suite except_clause_recoursive ELSE COLON suite FINALLY COLON suite
 				;
 except_clause_recoursive ::= except_clause COLON suite | except_clause COLON suite except_clause_recoursive;
-except_clause			::= EXCEPT 
-						| EXCEPT test 
-						| EXCEPT test AS test 
-						| EXCEPT test COMMA test;
+except_clause			::= EXCEPT {:RESULT = "except";:}
+						| EXCEPT test:t {:RESULT = "except " + t;:}
+						| EXCEPT test:t AS test:t2 {:RESULT = "except " + t + " as "+t2;:}
+						| EXCEPT test:t1 COMMA test:t2 {:RESULT = "except " + t1 + "," + t2;:}
+						;
 
-with_stmt				::= WITH with_item_recoursive COLON suite;
-with_item_recoursive	::= with_item | with_item COMMA with_item_recoursive;
-with_item				::= test | test AS expr;
+with_stmt				::= WITH with_item:w with_item_recoursive:wr COLON suite:s {:RESULT = "with " + w.toString() + wr.toString()+":"+s.toString();:};
+with_item_recoursive	::= COMMA with_item:w {:RESULT = ","+w;:}|with_item_recoursive:wr COMMA with_item:w {:RESULT = wr.toString()+","+w;:};
+with_item				::= test:t {:RESULT = t;:} | test:t AS expr:e {:RESULT = t + " as " + e;:};
 
 suite	::= simple_stmt:simple {:System.out.println("suite simple: " + simple.toString());RESULT = "\n"+simple.toString();:} 
 			| NEWLINE INDENT stmt_rec:s DEDENT 
 			{:
+				System.out.println("TOKEN: " + parser.getToken());
 				RESULT = "\n\t" + s;
 				//System.out.println("suite->NEWLINE INDENT stmt_rec DEDENT: " + s);
-				System.out.println("token: " + parser.getToken());
 			:}
 			;
 							
-stmt_rec	::= stmt:s {:System.out.println("stmt_rec->stmt: " + s); RESULT = s;:} 
-				| stmt_rec:sr stmt:s {:System.out.println("stmt_rec->stmt_rec stmt: " + sr + " " + s); RESULT = sr.toString() + " " +s.toString();:}
+stmt_rec	::= stmt:s {:System.out.println("TOKEN: " + parser.getToken()); RESULT = s;:} 
+				| stmt_rec:sr stmt:s {:System.out.println("TOKEN: " + parser.getToken()); RESULT = sr.toString() + " " +s.toString();:}
 				;
 
 assign_recoursive		::= ASSIGN testlist:t {:RESULT ="="+t.toString();:} 
