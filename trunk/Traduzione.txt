@@ -1,6 +1,10 @@
+x=0
 while a<b do 
-	while c<d do 
-	print ("ciao")
- end print ("fine while innestato")
- print ("fin")
+	while c<b do 
+	print ("fine while innestato")
+ print ("c")
+ print ("aaaa")
+ print ("bbbbb")
  end
+ end
+

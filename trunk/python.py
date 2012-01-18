@@ -1,5 +1,8 @@
+x=0
+
 while a<b:
-	while c<d:
-		print "ciao"
-	print "fine while innestato"
-print "fin"
+	while c<b:
+		print "fine while innestato"
+		print "c"
+		print "aaaa"
+		print "bbbbb"

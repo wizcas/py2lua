@@ -3,6 +3,8 @@ package s2sCompiler;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 
+import java_cup.runtime.Symbol;
+
 import pyGrammar.PythonCup;
 import pyGrammar.PythonLex;
 
@@ -18,8 +20,8 @@ public class Program
 		try {
 			lexer = new PythonLex(new FileReader("python.py"));
 			PythonCup parser = new PythonCup(lexer);
-			//parser.debug_parse();
-			Object result = parser.debug_parse();
+			parser.debug_parse();
+			//Object result = parser.parse();
 		} catch (FileNotFoundException e) {
 			System.out.println("File not found");
 			e.printStackTrace();
