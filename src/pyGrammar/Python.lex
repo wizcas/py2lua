@@ -108,7 +108,7 @@ longstring      =  "'''"{longstringitem}*"'''"
                      | \"\"\"{longstringitem}*\"\"\"
 shortstringitem =  {shortstringchar} | {escapeseq}
 longstringitem  =  {longstringchar} | {escapeseq}
-shortstringchar =  [^\\'\n]* /*any source character except "\" or newline or the quote*/
+shortstringchar =  [^\\\'\n]* /*any source character except "\" or newline or the quote*/
 longstringchar  =  [^\\]* //any source character except "\"
 escapeseq       =  \\ [a-zA-Z0-9] /*any ASCII character*/
 
