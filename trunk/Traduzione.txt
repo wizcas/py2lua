@@ -6,7 +6,7 @@ while s<100 do
  s=s+ciccio;
  if (s>8)and(pippo<10) then 
 	break 
- elseif (s<8)or(pippo<10) then 
+elseif (s<8)or(pippo<10) then 
 	print ("Ciao")
  end
  print (s)
@@ -16,7 +16,7 @@ while a<15 do
 	a=a+1
  if (a>5)and(a<=10) then 
 	print (a," > ",5)
- elseif a<5 then 
+elseif a<5 then 
 	print (a," < ",5)
 elseif a>10 then 
 	print ("Troppo grande for me")
@@ -25,6 +25,7 @@ elseif a>10 then
 	b=a^2
  c=a
  c=c*2
+ print ("Hello 5 il quadrato e'")
  end
 end
 print ("Salutamu")

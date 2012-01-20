@@ -376,16 +376,20 @@ simple_stmt		::= small_stmt:s NEWLINE {:RESULT = s.toString()+"\n";:}
 small_stmt_rec	::= SEMI small_stmt:s {:RESULT = ";"+s.toString();:} 
 					| small_stmt_rec:srec SEMI small_stmt:s {:RESULT = srec.toString()+";"+s.toString();:}
 					;
-small_stmt				::= expr_stmt:e {:RESULT =e.toString(); System.out.println("Found expr_stmt");:}
-							| print_stmt:p {:RESULT = p.toString();:}
-							| del_stmt:d {:RESULT=d; System.out.println("Found del_stmt");:}
-							| PASS:p {:RESULT=p; System.out.println("Found PASS_stmt");:}
-							| flow_stmt:f {:RESULT = f; System.out.println("Found flow_stmt");:}
-							| import_stmt:i {:System.out.println("Found import_stmt: " + i);:}
-                 			| assert_stmt {:System.out.println("Found assert_stmt");:}
-                 			| global_stmt {:System.out.println("Found global_stmt");:}
-                 			| exec_stmt {:System.out.println("Found exec_stmt");:}
-			                ;
+small_stmt		::= expr_stmt:e {:RESULT =e.toString(); System.out.println("Found expr_stmt");:}
+					| print_stmt:p {:RESULT = p.toString();:}
+					| del_stmt:d {:RESULT=d; System.out.println("Found del_stmt");:}
+					| PASS:p {:RESULT=p; System.out.println("Found PASS_stmt");:}
+					| flow_stmt:f {:RESULT = f; System.out.println("Found flow_stmt");:}
+					| import_stmt:i 
+					{:
+						System.out.println("Found import_stmt not supported in LUA");
+						RESULT = "--[[Import not supported in LUA\n"+i+"]]";
+					:}
+         			| assert_stmt {:System.out.println("Found assert_stmt");:}
+         			| global_stmt {:System.out.println("Found global_stmt");:}
+         			| exec_stmt {:System.out.println("Found exec_stmt");:}
+	                ;
 expr_stmt				::= testlist:t {:RESULT=t;:}
 							| testlist:t1 augassign:a testlist:t2 
 							{:
@@ -419,7 +423,7 @@ import_stmt				::= IMPORT dotted_as_names:d {:RESULT = "import " + d;:}
 							| FROM DOT dot_rec:d IMPORT LPAREN import_as_names:i RPAREN {:RESULT = "from." + d+" import("+i.toString()+")";:}
 							| FROM DOT dot_rec:d IMPORT import_as_names:i {:RESULT = "from." + d+" import "+i;:}
 							;
-dotted_as_names			::= dotted_as_name:d {:RESULT=d;:} |dotted_as_names:ds COMMA dotted_as_name:d   {:RESULT=ds+","+d;:};
+dotted_as_names			::= dotted_as_name:d {:RESULT=d;:} | dotted_as_names:ds COMMA dotted_as_name:d   {:RESULT=ds+","+d;:};
 dotted_as_name			::= dotted_name:d {:RESULT=d;:} | dotted_name:d AS NAME:n {:RESULT = d+"as"+n;:};
 dotted_name				::= NAME:n {:RESULT=n;:} | NAME:n DOT dotted_name:d {:RESULT=n+"."+d;:};
 import_as_names			::= import_as_name:i {:RESULT= i;:} | import_as_name:i COMMA import_as_names:is {:RESULT=i+","+is;:};
@@ -441,10 +445,10 @@ compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt
 					| classdef {:System.out.println("classdef");:}
 					| decorated {:System.out.println("decorated");:}
 					;
-if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec {:RESULT = "if " + t.toString() + " then " + s.toString() + " " + else_rec + " end\n";:}
+if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec {:RESULT = "if " + t.toString() + " then " + s.toString() + else_rec + " end\n";:}
 							| IF test:t COLON suite:s {:RESULT="if " + t + " then " + s + " end";:}
 							| IF test:t COLON suite:s1 ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + " else " + s2.toString() + " end\n";:}
-							| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + " " + else_rec + " else " + s2.toString() + " end\n";:}
+							| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + else_rec + " else " + s2.toString() + " end\n";:}
 							;
 else_recoursive			::= ELIF test:t COLON suite:s {:RESULT = "elseif " + t.toString() + " then " + s.toString();:}
 							| ELIF test:t COLON suite:s else_recoursive:else_rec {:RESULT = "elseif " + t.toString() + " then " + s.toString() + else_rec;:}
