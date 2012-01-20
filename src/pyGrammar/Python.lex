@@ -99,18 +99,32 @@ NAME  		=   [a-zA-Z_][a-zA-Z0-9_]*
 COMMENT		= 	#([^\n|\r])*
 
 
-/* Stringhe */
+/* Stringhe 
 STRING  		=  ({stringprefix})?({shortstring} | {longstring})
 stringprefix    =  r | u | ur | R | U | UR | Ur | uR
                      | b | B | br | Br | bR | BR
-shortstring     =  "'"{shortstringitem}*"'" | \"{shortstringitem}*\"
+shortstring     =  \'{shortstringitem}*\' | \"{shortstringitem}*\"
 longstring      =  "'''"{longstringitem}*"'''"
                      | \"\"\"{longstringitem}*\"\"\"
 shortstringitem =  {shortstringchar} | {escapeseq}
 longstringitem  =  {longstringchar} | {escapeseq}
-shortstringchar =  [^\\\'\n]* /*any source character except "\" or newline or the quote*/
+shortstringchar =  [^\\'\n]* /*any source character except "\" or newline or the quote*/
 longstringchar  =  [^\\]* //any source character except "\"
 escapeseq       =  \\ [a-zA-Z0-9] /*any ASCII character*/
+*/
+
+/* Stringhe */
+STRING         =  ({stringprefix})?({shortstring} | {longstring})
+stringprefix    =  r | u | ur | R | U | UR | Ur | uR
+                    | b | B | br | Br | bR | BR
+shortstring     =  "'"{shortstringitemq}*"'" | \"{shortstringitemqq}*\"
+longstring      =  "'''"{longstringitem}*"'''"
+                    | \"\"\"{longstringitem}*\"\"\"
+shortstringitemq =  [^'\n\\] | {escapeseq}
+shortstringitemqq = [^\"\n\\] | {escapeseq}
+longstringitem  =  {longstringchar} | {escapeseq}
+longstringchar  =  [^\\]* //any source character except "\"
+escapeseq       =  \\ [a-zA-Z0-9'\"] /*any ASCII character*/
 
 /* Integer and Long Integer */
 LONGINT    	   	=  ({DECIMAL}|{OCT}|{HEX}|{BIN})[lL]

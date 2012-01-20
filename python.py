@@ -23,6 +23,5 @@ while a < 15:
 		b=a**2
 		c=a
 		c*=2
-		print "Hello 5 il quadrato e"
-		print "Hello 5 il quadrato e' ", b, "il doppio e' ", c
+		print "Hello 5 il quadrato e'"
 print "Salutamu"
