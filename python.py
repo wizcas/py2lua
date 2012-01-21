@@ -5,9 +5,9 @@ while s<100:
 	ciccio=3
 	s=s + ciccio;
 	if (s>8) & (pippo<10):
-		break
+		break;
 	elif (s<8) | (pippo<10):
-		print "Ciao"
+		print "Ciao";
 	print s
 a = 0
 while a < 15:
@@ -25,3 +25,15 @@ while a < 15:
 		c*=2
 		print "Hello 5 il quadrato e'"
 print "Salutamu"
+
+
+def f(**kargs):
+	for k in kargs:
+		print k, kargs[k]
+
+dic = {c:11,d:12,e:13}
+f(dic)
+
+for i in range(4,18,2):
+	print i
+
