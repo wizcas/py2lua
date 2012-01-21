@@ -92,7 +92,7 @@ action code
     private void pSynWarning(String message){
         System.err.println("SYN WARNING: line: "+parser.getLine()+" col: "+parser.getColumn()+": "+message);
         /* Quando c'e' un errore sintattico continuo il parsing ma disabilito la semantica */
-        disableSem();
+        //disableSem();
     }
         
     // Write a string in output
@@ -119,7 +119,7 @@ terminal        AND, AS, ASSERT, BREAK, CLASS, CONTINUE, WHITESPACE;
 terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
 terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
 terminal        IN, IS, LAMBDA, NOT, OR, PASS;
-terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH;
+terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH, RANGE;
 terminal        YIELD, TRIDOT, DIVDIV;
 terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
 terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
@@ -130,7 +130,7 @@ terminal String NAME, STRING;
 
 non terminal	file_input, file_input_recoursive, stmt,simple_stmt, expr_stmt, print_stmt,del_stmt,flow_stmt,import_stmt, assert_stmt,global_stmt,exec_stmt;
 non terminal	number, binop, unop, comparison, lambdef, expr, atom, test, trailer, yield_expr, testlist_comp, listmaker, dictorsetmaker, testlist, exprlist;
-non terminal	list_iter, list_for, list_if, varargslist, defparameter_recoursive, defparameter, fpdef, fplist, name_recoursive;
+non terminal	list_iter, list_for, list_if, varargslist, defparameter_recoursive, defparameter, fpdef, fplist, name_recoursive, range_stmt;
 non terminal	augassign, assign_recoursive, return_stmt,raise_stmt, dotted_name, dotted_as_name, dotted_as_names, import_as_name, import_as_names, dot_rec;
 non terminal	arglist, subscriptlist, subscript,subscript_rec,sliceop,argument,argument_rec,comp_for,comp_iter,comp_if, compound_stmt;
 non terminal	if_stmt, while_stmt, for_stmt, try_stmt, with_stmt, funcdef, classdef, decorated, suite, stmt_rec, small_stmt, small_stmt_rec;
@@ -176,27 +176,29 @@ precedence right MULTMULT;
 
 file_input	::= file_input_recoursive:f {:
 								try {
-									dumpln(f.toString());
-									BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
-									String outText = parser.outputBuffer.toString();
-									out.write(outText);
-									out.close();
+									if(f != null)
+									{
+										dumpln(f.toString());
+										BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
+										String outText = parser.outputBuffer.toString();
+										out.write(outText);
+										out.close();
+									}
 								}
                                 catch (IOException e)
                                 {
                                 	e.printStackTrace();
                                 }
                                 :};
-file_input_recoursive		::= NEWLINE file_input_recoursive:f {:RESULT = "\n"+f; dumpln("\n"+f);:}
+file_input_recoursive		::= NEWLINE file_input_recoursive:f {:RESULT = "\n"+f;:}
 								| stmt:s file_input_recoursive:f 
 								{:
-									RESULT = s.toString() + f.toString();
-									/*if(s==null && f!=null)
-										dumpln(f.toString());
+									if(s==null && f!=null)
+										RESULT= f.toString();
 									else if (s!=null && f == null)
-										dumpln(s.toString());
+										RESULT = s.toString();
 									else if (s!=null && f != null)
-										dumpln(s.toString() + f.toString());*/
+										RESULT = s.toString() + f.toString();
 								:}
 								| {:RESULT = "";:}
 								;
@@ -228,15 +230,31 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 						if (params[0].startsWith("*"))
 						{
 							sb.append("...");
+							sb.append(")");
 							if(params[0].contains("**")) //abbiamo **kargs
+							{
 								argsName = params[0].substring(2);
-							else 
+								sb.append("\n\tlocal ");
+								sb.append(argsName);
+								sb.append("={}\n\t");
+								sb.append("for k,v in pairs(arg[1]) do\n\t\t");
+								sb.append(argsName);
+								sb.append("[k]=v\nend");
+							}
+							else
+							{
 								argsName = params[0].substring(1); //abbiamo *args
+								sb.append("\nlocal ");
+								sb.append(argsName);
+								sb.append("={}\n\t");
+								sb.append("for i=1,#arg do\n\t\t");
+								sb.append(argsName);
+								sb.append("[i]=arg[i]\n\tend");
+							}
 						}
 						else{
 							sb.append(params[0]);
 						}
-						sb.append(")");
 					}
 					else if(params.length == 2)
 					{
@@ -247,12 +265,12 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 						if(params[1].contains("**")) //abbiamo **kargs
 						{
 							argsName = params[1].substring(2);
-							sb.append("\nlocal ");
+							sb.append("\n\tlocal ");
 							sb.append(argsName);
-							sb.append("={}\n");
-							sb.append("for k,v in pairs(arg) do\n\t");
+							sb.append("={}\n\t");
+							sb.append("for k,v in pairs(arg[1]) do\n\t\t");
 							sb.append(argsName);
-							sb.append("[k]=arg[k]\nend");
+							sb.append("[k]=v\nend");
 						}
 						else
 						{
@@ -378,16 +396,21 @@ small_stmt_rec	::= SEMI small_stmt:s {:RESULT = ";"+s.toString();:}
 					;
 small_stmt		::= expr_stmt:e {:RESULT =e.toString(); System.out.println("Found expr_stmt");:}
 					| print_stmt:p {:RESULT = p.toString();:}
-					| del_stmt:d {:RESULT=d; System.out.println("Found del_stmt");:}
+					| range_stmt:r {:RESULT = r.toString();:}
+					| del_stmt:d {:RESULT="--[[Del not supported in LUA\n"+d+"]]";pSemWarning("Found del_stmt not supported in LUA");:}
 					| PASS:p {:RESULT=p; System.out.println("Found PASS_stmt");:}
-					| flow_stmt:f {:RESULT = f; System.out.println("Found flow_stmt");:}
+					| flow_stmt:f {:RESULT = f;:}
 					| import_stmt:i 
 					{:
-						System.out.println("Found import_stmt not supported in LUA");
+						pSemWarning("Found import_stmt not supported in LUA");
 						RESULT = "--[[Import not supported in LUA\n"+i+"]]";
 					:}
          			| assert_stmt {:System.out.println("Found assert_stmt");:}
-         			| global_stmt {:System.out.println("Found global_stmt");:}
+         			| global_stmt:g 
+         			{:
+         				pSemWarning("Found global_stmt not supported in LUA");
+         				RESULT = "--[[Global not supported in LUA\n"+g+"]]";
+         			:}
          			| exec_stmt {:System.out.println("Found exec_stmt");:}
 	                ;
 expr_stmt				::= testlist:t {:RESULT=t;:}
@@ -403,15 +426,21 @@ augassign				::= PLUSEQ:op {:RESULT=op;:}| MINUSEQ:op {:RESULT=op;:} | MULTEQ:op
 							| DIVEQ:op {:RESULT=op;:} | MODEQ:op {:RESULT=op;:} | ANDEQ:op {:RESULT=op;:} 
 							| OREQ:op {:RESULT=op;:} | EXPEQ {:RESULT="^=";:} | RSEQ:op {:RESULT=op;:} | LSEQ:op {:RESULT=op;:};
 print_stmt				::= PRINT {:RESULT = "print ";:} | PRINT testlist:t {:RESULT = "print (" + t.toString()+")";:}| PRINT RSHIFT testlist:t {:RESULT = "print >>" + t.toString();:};
-del_stmt				::= DEL exprlist;
+range_stmt				::= RANGE LPAREN expr:e1 COMMA expr:e2 COMMA expr:e3 RPAREN {:RESULT = new String[]{e1.toString(),e2.toString(),e3.toString()};:}
+							| RANGE LPAREN expr:e1 COMMA expr:e2 RPAREN {:RESULT = new String[]{e1.toString(),e2.toString()};:}
+							;
+del_stmt				::= DEL exprlist:explist {:RESULT = "del " + explist;:};
 flow_stmt				::= BREAK {:RESULT = "break ";:}
-							| CONTINUE 
+							| CONTINUE {:pSemWarning("LUA doesn't support continue statement");RESULT = "--[[LUA doesn't support continue statement\ncontinue]]";:}
 							| return_stmt:r {:RESULT = r;:}
-							| raise_stmt {:pSemWarning("Found raise statement, not supported in LUA");:}
+							| raise_stmt:r {:pSemWarning("Found raise statement, not supported in LUA"); RESULT = "--[[LUA doesn't support raise statement\n"+r+"]]";:}
 							| yield_expr:y {:RESULT = y;:}
 							;
 return_stmt				::= RETURN testlist:t {:RESULT = "return " + t;:};
-raise_stmt				::= RAISE test | RAISE test COMMA test | RAISE test COMMA test COMMA test;
+raise_stmt				::= RAISE test:t {:RESULT = "raise " + t;:}
+							| RAISE test:t1 COMMA test:t2 {:RESULT = "raise " + t1 + ","+t2;:}
+							| RAISE test:t1 COMMA test:t2 COMMA test:t3 {:RESULT = "raise " + t1 + ","+t2+","+t3;:}
+							;
 import_stmt				::= IMPORT dotted_as_names:d {:RESULT = "import " + d;:}
 							| FROM dotted_name:d IMPORT MULT {:RESULT = "from " + d + " import*";:}
 							| FROM dotted_name:d IMPORT LPAREN import_as_names:i RPAREN {:RESULT = "from " + d+" import("+i+")";:}
@@ -438,7 +467,7 @@ assert_stmt				::= ASSERT testlist:t {:RESULT = "assert " + t;:};
 
 compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt);:}
 					| while_stmt:w {:RESULT = w.toString();:}
-					| for_stmt:f {:System.out.println("for_stmt: " + f);RESULT = f.toString();:}
+					| for_stmt:f {:RESULT = f.toString();:}
 					| try_stmt:t {:System.out.println("try_stmt");RESULT = t.toString();:}
 					| with_stmt {:System.out.println("with_stmt");:}
 					| funcdef:f {:System.out.println("funcdef: " + f); RESULT = f.toString();:}
@@ -447,8 +476,8 @@ compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt
 					;
 if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec {:RESULT = "if " + t.toString() + " then " + s.toString() + else_rec + " end\n";:}
 							| IF test:t COLON suite:s {:RESULT="if " + t + " then " + s + " end";:}
-							| IF test:t COLON suite:s1 ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + " else " + s2.toString() + " end\n";:}
-							| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + else_rec + " else " + s2.toString() + " end\n";:}
+							| IF test:t COLON suite:s1 ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + "else " + s2.toString() + " end\n";:}
+							| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + else_rec + "else " + s2.toString() + " end\n";:}
 							;
 else_recoursive			::= ELIF test:t COLON suite:s {:RESULT = "elseif " + t.toString() + " then " + s.toString();:}
 							| ELIF test:t COLON suite:s else_recoursive:else_rec {:RESULT = "elseif " + t.toString() + " then " + s.toString() + else_rec;:}
@@ -467,18 +496,33 @@ while_stmt	::= WHILE test:t COLON suite:s
 				;
 for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
 				{:
-					String suiteMod = s.toString().replace(e.toString(), t+"[k]");
-					RESULT = "for k,"+ e+" in pairs("+t+") do "+suiteMod+"end\n"; //se traduciamo letteralmente lua non considera la lista di elementi, quindi dobbiamo inserire il pairs
+				System.out.println("explist: " + e);
+				System.out.println("suite: " + s);
+				String keyIdent;
+					if(e.toString().equals("k"))
+						keyIdent = "key";
+					else
+						keyIdent = "k";
+					//String suiteMod = s.toString().replace(e.toString(), t+"["+keyIdent+"]");
+					RESULT = "for " + e + " in pairs("+t+") do "+s+"end\n"; //se traduciamo letteralmente lua non considera la lista di elementi, quindi dobbiamo inserire il pairs
 				:} 
 				| FOR exprlist IN testlist COLON suite ELSE COLON suite
+				| FOR exprlist:e IN range_stmt:r COLON suite:s 
+				{:
+					String[] range = (String[])r;
+					if(range.length == 3)
+						RESULT = "for " + e + "=" + range[0]+","+range[1] + "-1," + range[2]+" do " + s.toString() + " end\n";
+					else
+						RESULT = "for " + e + "=" + range[0]+","+range[1]+"-1 do " + s.toString() + " end\n";
+				:}
 				;
-try_stmt	::= TRY COLON suite FINALLY COLON suite
-				| TRY COLON suite except_clause_recoursive
-				| TRY COLON suite except_clause_recoursive ELSE COLON suite
-				| TRY COLON suite except_clause_recoursive FINALLY COLON suite
-				| TRY COLON suite except_clause_recoursive ELSE COLON suite FINALLY COLON suite
+try_stmt	::= TRY COLON suite:s1 FINALLY COLON suite:s2 {:RESULT = "try:" + s1 + "finally:"+s2;:}
+				| TRY COLON suite:s1 except_clause_recoursive:excrec {:RESULT = "try:" + s1 + excrec;:}
+				| TRY COLON suite:s1 except_clause_recoursive:excrec ELSE COLON suite:s2 {:RESULT = "try:" + s1 + excrec + "else:"+s2;:}
+				| TRY COLON suite:s1 except_clause_recoursive:excrec FINALLY COLON suite:s2 {:RESULT = "try:" + s1 + excrec + "finally:" + s2;:}
+				| TRY COLON suite:s1 except_clause_recoursive:excrec ELSE COLON suite:s2 FINALLY COLON suite:s3 {:RESULT = "try:" + s1 + excrec + "else:"+s2 + "finally:" + s3;:}
 				;
-except_clause_recoursive ::= except_clause COLON suite | except_clause COLON suite except_clause_recoursive;
+except_clause_recoursive ::= except_clause:ec COLON suite:s {:RESULT = ec+":"+s;:} | except_clause_recoursive:ecrec except_clause:ec COLON suite:s {:RESULT = ecrec+""+ec+":"+s;:};
 except_clause			::= EXCEPT {:RESULT = "except";:}
 						| EXCEPT test:t {:RESULT = "except " + t;:}
 						| EXCEPT test:t AS test:t2 {:RESULT = "except " + t + " as "+t2;:}
@@ -506,7 +550,7 @@ assign_recoursive		::= ASSIGN testlist:t {:RESULT ="="+t.toString();:}
 							| ASSIGN testlist:t assign_recoursive:ass_rec {:RESULT ="="+t.toString()+ass_rec.toString();:}
 							; 
 test					::= comparison:c {:RESULT = c;:} | lambdef:l {:RESULT = l;:};
-comparison				::= expr:e {:RESULT = e;:} | expr:e binop:binop comparison:comparison {:RESULT = e.toString()+binop.toString()+comparison.toString();:};
+comparison				::= expr:e {:RESULT = e;:} |comparison:comparison binop:binop  expr:e  {:RESULT =comparison.toString()+ binop.toString()+e.toString();:};
 expr					::= atom:a {:RESULT = a;:} | atom:a trailer:t {:RESULT = a.toString() + t.toString();:};
 atom					::= NAME:n {:RESULT = n;:} | number:n {:RESULT = n;:} | STRING:s {:RESULT = s;:}
 							| unop:u  atom:a  {:RESULT = u.toString()+a.toString();:}
@@ -514,10 +558,10 @@ atom					::= NAME:n {:RESULT = n;:} | number:n {:RESULT = n;:} | STRING:s {:RESU
 							| LBRACK RBRACK {:RESULT="{}";:}
 							| LCURLY RCURLY {:RESULT="{}";:}
 							| LPAREN yield_expr:y RPAREN {:RESULT="("+y.toString()+")";:}
-							| LPAREN testlist_comp:t RPAREN {:RESULT="("+t.toString()+")";:}
+							| LPAREN testlist_comp:t RPAREN {:RESULT="{"+t.toString()+"}";:}
 							| LBRACK listmaker:l RBRACK 
 							{:
-								RESULT="["+l.toString()+"]";
+								RESULT="{"+l.toString()+"}";
 							:}
 							| LCURLY dictorsetmaker:d RCURLY {:RESULT="{"+d.toString()+"}";:}
 							;
@@ -527,14 +571,19 @@ yield_expr				::= YIELD | YIELD testlist;
 listmaker				::= test:t list_for:l {:RESULT = t.toString()+l.toString();:} | testlist:t {:RESULT=t.toString();:};
 
 /* Dictionary maker e Set maker pre creare i dizionari oppure gli insiemi. */
-dictorsetmaker			::= test COLON test | test COLON test COMMA | test COLON test COMMA dictorsetmaker;
+dictorsetmaker			::= test:t1 COLON test:t2 {:RESULT = t1+"="+t2;:}
+						| dictorsetmaker:dic COMMA test:t1 COLON test:t2 {:RESULT = dic +","+ t1+"="+t2;:}
+						;
 /* Sono stati eliminati i riferimenti a old_test e old_lambdef poichè superflui per lo scopo del progetto. */
 testlist_comp			::= test:t list_for:l {:RESULT = t+" "+l;:} | testlist:tlist {:RESULT = tlist;:};
 testlist				::= test:t {:RESULT = t;:} 
 						//| test:t COMMA {:RESULT = t.toString()+",";:}
 						| testlist:tl COMMA test:t {:RESULT = tl.toString()+","+t.toString();:}
 						;
-exprlist				::= expr:e {:RESULT = e;:} | expr:e COMMA {:RESULT = e + ",";:}| expr COMMA exprlist;
+exprlist				::= expr:e {:RESULT = e;:} 
+							//| expr:e COMMA {:RESULT = e + ",";:}
+							|exprlist:explist COMMA expr:e {:RESULT = explist + "," + e;:}
+							;
 
 /* Le lambda form hanno la stessa posizione sintattica delle espressioni e servono per creare funzioni anonime. */
 lambdef					::= LAMBDA COLON test:t {:RESULT="lambda:"+t;:} | LAMBDA varargslist:v COLON test:t {:RESULT="lambda "+v.toString()+":"+t.toString();:};

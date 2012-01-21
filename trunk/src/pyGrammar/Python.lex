@@ -274,6 +274,7 @@ SEMI		= ";"
 "or"        	{ return sym(OR); }
 "pass"      	{ return sym(PASS); }
 "print"     	{ return sym(PRINT); }
+"range"			{ return sym(RANGE); }
 "raise"     	{ return sym(RAISE); }
 "return"    	{ return sym(RETURN); }
 "try"       	{ return sym(TRY); }
