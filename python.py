@@ -27,14 +27,7 @@ while a < 15:
 print "Salutamu"
 
 
-def f(**kargs):
-	for k in kargs:
-		print k, kargs[k]
+def f(a=1,b=2):
+	print a,b
 
-dic = {c:11,d:12,e:13}
-f(dic)
-
-dic = {"a":2,"b":4}
-for i in dic:
-	print i,dic[i]
 

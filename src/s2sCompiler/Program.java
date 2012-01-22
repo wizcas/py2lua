@@ -19,9 +19,9 @@ public class Program
 		PythonLex lexer;
 		try {
 			lexer = new PythonLex(new FileReader("python.py"));
-			PythonCup parser = new PythonCup(lexer);
-			parser.debug_parse();
-			//Object result = parser.parse();
+			PythonCup parserCup = new PythonCup(lexer);
+			//parserCup.debug_parse();
+			Object result = parserCup.parse();
 		} catch (FileNotFoundException e) {
 			System.out.println("File not found");
 			e.printStackTrace();
