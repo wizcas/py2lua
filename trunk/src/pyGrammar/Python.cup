@@ -8,7 +8,7 @@ import java.util.*;
 init with {:
     // String buffer used to store output program
     outputBuffer = new StringBuffer();
-    counter = 0;
+    tabCounter = 0;
 :};
 
 parser code
@@ -24,7 +24,7 @@ parser code
     public StringBuffer outputBuffer;
     
      // counter used to count indentation level
-    public int counter;
+    public static int tabCounter;
 
     // Redefinition of error functions
     public void report_error(String message, Object info) {
@@ -100,14 +100,9 @@ action code
         parser.outputBuffer.append(s+"\n");
     }
     
-    private void incrementIndent()
+    private int getIndentation()
     {
-    	parser.counter++;
-    }
-    
-    private int getCounter()
-    {
-    	return parser.counter;
+    	return ((PythonLex)parser.getScanner()).stackLength()-1;
     }
 
 :}
@@ -251,34 +246,58 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 						}
 						else{
 							sb.append(params[0]);
+							sb.append(")");
 						}
 					}
 					else if(params.length == 2)
 					{
-						sb.append(params[0]);
-						sb.append(",");
-						sb.append("...");
-						sb.append(")");
-						if(params[1].contains("**")) //abbiamo **kargs
+						if(!params[0].contains("*"))
 						{
-							argsName = params[1].substring(2);
-							sb.append("\n\tlocal ");
-							sb.append(argsName);
-							sb.append("={}\n\t");
-							sb.append("for k,v in pairs(arg[1]) do\n\t\t");
-							sb.append(argsName);
-							sb.append("[k]=v\nend");
+							sb.append(params[0]);
+							sb.append(",");
+							sb.append("...");
+							sb.append(")");
+							if(params[1].startsWith("**")) //abbiamo **kargs
+							{
+								argsName = params[1].substring(2);
+								sb.append("\n\tlocal ");
+								sb.append(argsName);
+								sb.append("={}\n\t");
+								sb.append("for k,v in pairs(arg[1]) do\n\t\t");
+								sb.append(argsName);
+								sb.append("[k]=v\nend");
+							}
+							else
+							{
+								argsName = params[1].substring(1); //abbiamo *args
+								sb.append("\nlocal ");
+								sb.append(argsName);
+								sb.append("={}\n\t");
+								sb.append("for i=1,#arg do\n\t\t");
+								sb.append(argsName);
+								sb.append("[i]=arg[i]\n\tend");
+							}
 						}
-						else
+						else //caso parametri function(*args, **kargs)
 						{
-							argsName = params[1].substring(1); //abbiamo *args
+							System.out.println("caso parametri con *");
+							sb.append("...");
+							sb.append(")");
+							argsName = params[0].substring(1);
+							kargsName = params[1].substring(2);
 							sb.append("\nlocal ");
 							sb.append(argsName);
-							sb.append("={}\n\t");
-							sb.append("for i=1,#arg do\n\t\t");
+							sb.append("={}");
+							sb.append("\nlocal ");
+							sb.append(kargsName);
+							sb.append("={}");
+							sb.append("\n\tfor k,v in pairs(arg) do\n\t\tif type(k) == 'number' then\n\t\t\t");
 							sb.append(argsName);
-							sb.append("[i]=arg[i]\n\tend");
+							sb.append(".append(v)\n\t\telse\n\t\t\t");
+							sb.append(kargsName);
+							sb.append("[k]=v\n\t\tend\n\tend");
 						}
+						
 					}
 					else //params sono tre quindi ci sono quelli normali ed entrambi *args e **kargs
 					{
@@ -301,7 +320,7 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 						//for k,v in pairs(arg) do 
 						//	if type(k)== 'int' then argsName.append(v)
 						//	else kargsName[k]=v
-						sb.append("for k,v in pairs(arg) do\n\tif type(k) == 'int' then\n\t\t");
+						sb.append("for k,v in pairs(arg) do\n\tif type(k) == 'number' then\n\t\t");
 						sb.append(argsName);
 						sb.append(".append(v)\n\telse\n\t\t");
 						sb.append(kargsName);
@@ -316,7 +335,10 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 parameters				::= LPAREN RPAREN {::} 
 							| LPAREN varargslist:v RPAREN 
 							{:
-								RESULT = (String[])v;
+								String[] var = (String[])v;
+								if(var[0].contains("="))
+									var[0] = "--[[Found parameter assign not supported in LUA\n"+var[0]+"]]";
+								RESULT = var;
 								
 							:};
 
@@ -352,8 +374,8 @@ varargslist				::= defparameter_recoursive:d
 							| MULT NAME:n1 COMMA MULTMULT NAME:n2 
 							{:
 								RESULT = new String[2];
-								((String[])RESULT)[0]=n1;
-								((String[])RESULT)[1]=n2;
+								((String[])RESULT)[0]="*"+n1;
+								((String[])RESULT)[1]="**"+n2;
 							:}
 							| MULTMULT NAME:n 
 							{:
@@ -364,7 +386,7 @@ varargslist				::= defparameter_recoursive:d
 defparameter_recoursive	::= defparameter:d {:RESULT=d;:}
 							| defparameter_recoursive:dr COMMA defparameter:d   {:RESULT = dr+","+d;:} 
 							;
-defparameter			::= fpdef:f {:RESULT = f;:} | fpdef:f ASSIGN test:t {:RESULT=f+"="+t;:};
+defparameter			::= fpdef:f {:RESULT = f;:} | fpdef:f ASSIGN test:t {:pSemWarning("Found parameter assign not supported in LUA"); RESULT=f+"="+t;:};
 fpdef					::= NAME:n {:RESULT = n;:} | LPAREN fplist:f RPAREN {:RESULT="("+f+")";:};
 fplist					::= fpdef:f {:RESULT = f;:} 
 							| fplist:fl COMMA fpdef:f  {:RESULT = fl+","+f;:}
@@ -382,12 +404,30 @@ simple_stmt		::= small_stmt:s NEWLINE {:RESULT = s.toString()+"\n";:}
 small_stmt_rec	::= SEMI small_stmt:s {:RESULT = ";"+s.toString();:} 
 					| small_stmt_rec:srec SEMI small_stmt:s {:RESULT = srec.toString()+";"+s.toString();:}
 					;
-small_stmt		::= expr_stmt:e {:RESULT =e.toString(); System.out.println("Found expr_stmt");:}
-					| print_stmt:p {:RESULT = p.toString();:}
+small_stmt		::= expr_stmt:e 
+					{:
+						String tab = "";
+						for(int i=0; i<getIndentation(); i++)
+							tab+="\t";
+						RESULT =tab+e.toString(); System.out.println("Found expr_stmt");
+					:}
+					| print_stmt:p 
+					{:
+						String tab = "";
+						for(int i=0; i<getIndentation(); i++)
+							tab+="\t";
+						RESULT = tab+p.toString();
+					:}
 					| range_stmt:r {:RESULT = r.toString();:}
 					| del_stmt:d {:RESULT="--[[Del not supported in LUA\n"+d+"]]";pSemWarning("Found del_stmt not supported in LUA");:}
 					| PASS:p {:RESULT=p; System.out.println("Found PASS_stmt");:}
-					| flow_stmt:f {:RESULT = f;:}
+					| flow_stmt:f 
+					{:
+						String tab = "";
+						for(int i=0; i<getIndentation(); i++)
+							tab+="\t";
+						RESULT = tab+f;
+					:}
 					| import_stmt:i 
 					{:
 						pSemWarning("Found import_stmt not supported in LUA");
@@ -462,19 +502,54 @@ compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt
 					| classdef {:System.out.println("classdef");:}
 					| decorated {:System.out.println("decorated");:}
 					;
-if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec {:RESULT = "if " + t.toString() + " then " + s.toString() + else_rec + " end\n";:}
-							| IF test:t COLON suite:s {:RESULT="if " + t + " then " + s + " end";:}
-							| IF test:t COLON suite:s1 ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + "else " + s2.toString() + " end\n";:}
-							| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 {:RESULT="if " + t + " then " + s1 + else_rec + "else " + s2.toString() + " end\n";:}
+if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec 
+							{:
+								String tab = "";
+								for(int i=0; i<getIndentation(); i++)
+									tab+="\t";
+									System.out.println(getIndentation());
+								RESULT =tab+ "if " + t.toString() + " then " + s.toString() +tab+ else_rec + tab+"end\n";
+							:}
+							| IF test:t COLON suite:s 
+							{:
+								String tab = "";
+								for(int i=0; i<getIndentation(); i++)
+									tab+="\t";
+									System.out.println(getIndentation());
+								RESULT=tab+ "if " + t + " then " + s + tab+"end";
+							:}
+							| IF test:t COLON suite:s1 ELSE COLON suite:s2 
+							{:
+								String tab = "";
+								for(int i=0; i<getIndentation(); i++)
+									tab+="\t";
+									System.out.println(getIndentation());
+								RESULT=tab+ "if " + t + " then " + s1 + tab+"else " + s2.toString() + tab+"end\n";
+							:}
+							| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 
+							{:
+								String tab = "";
+								for(int i=0; i<getIndentation(); i++)
+									tab+="\t";
+									System.out.println(getIndentation());
+								RESULT=tab+ "if " + t + " then " + s1 +tab+ else_rec + tab+"else " + s2.toString() + tab +"end\n";
+							:}
 							;
-else_recoursive			::= ELIF test:t COLON suite:s {:RESULT = "elseif " + t.toString() + " then " + s.toString();:}
-							| ELIF test:t COLON suite:s else_recoursive:else_rec {:RESULT = "elseif " + t.toString() + " then " + s.toString() + else_rec;:}
-							;
+else_recoursive		::= ELIF test:t COLON suite:s {:RESULT ="elseif " + t.toString() + " then " + s.toString();:}
+						| else_recoursive:else_rec ELIF test:t COLON suite:s  {:
+						String tab = "";
+						for(int i=0; i<getIndentation(); i++)
+							tab+="\t";
+						RESULT =else_rec + tab+"elseif " + t.toString() + " then " + s.toString();:}
+						;
 
 while_stmt	::= WHILE test:t COLON suite:s 
 				{:
 					//System.out.println("while_stmt->WHILE test COLON suite");
-					RESULT = "while " + t.toString() + " do " + s.toString() + "end\n";
+					String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+					RESULT = tab+"while " + t.toString() + " do " + s.toString() +tab+ "end\n";
 					//dumpln("while " + t.toString() + " do " + s.toString() + " end");
 				:} 
 				| WHILE test:t COLON suite:s1 ELSE COLON suite:s2
@@ -525,13 +600,13 @@ suite	::= simple_stmt:simple {:System.out.println("suite simple: " + simple.toSt
 			| NEWLINE INDENT stmt_rec:s DEDENT 
 			{:
 				//System.out.println("TOKEN: " + parser.getToken());
-				RESULT = "\n\t" + s;
+				RESULT = "\n" + s;
 				//System.out.println("suite->NEWLINE INDENT stmt_rec DEDENT: " + s);
 			:}
 			;
 							
 stmt_rec	::= stmt:s {:RESULT = s;:} 
-				| stmt_rec:sr stmt:s {:System.out.println("TOKEN: " + parser.getToken()); RESULT = sr.toString() + " " +s.toString();:}
+				| stmt_rec:sr stmt:s {:RESULT = sr.toString() +s.toString();:}
 				;
 
 assign_recoursive		::= ASSIGN testlist:t {:RESULT ="="+t.toString();:} 
@@ -542,11 +617,11 @@ comparison				::= expr:e {:RESULT = e;:} |comparison:comparison binop:binop  exp
 expr					::= atom:a {:RESULT = a;:} | atom:a trailer:t {:RESULT = a.toString() + t.toString();:};
 atom					::= NAME:n {:RESULT = n;:} | number:n {:RESULT = n;:} | STRING:s {:RESULT = s;:}
 							| unop:u  atom:a  {:RESULT = u.toString()+a.toString();:}
-							| LPAREN RPAREN {:RESULT="{}";:}
+							| LPAREN RPAREN {:RESULT="()";:}
 							| LBRACK RBRACK {:RESULT="{}";:}
 							| LCURLY RCURLY {:RESULT="{}";:}
 							| LPAREN yield_expr:y RPAREN {:RESULT="("+y.toString()+")";:}
-							| LPAREN testlist_comp:t RPAREN {:RESULT="{"+t.toString()+"}";:}
+							| LPAREN testlist_comp:t RPAREN {:RESULT="("+t.toString()+")";:}
 							| LBRACK listmaker:l RBRACK 
 							{:
 								RESULT="{"+l.toString()+"}";

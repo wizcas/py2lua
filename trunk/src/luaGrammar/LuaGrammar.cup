@@ -157,7 +157,7 @@ parlist			::= namelist
 				;
 tableconstructor ::= LCURLY RCURLY | LCURLY fieldlist RCURLY {: System.out.println("table constructor");:};
 fieldlist		::= field {:System.out.println("found a field"); :} 
-				| field fieldsep fieldlist {:System.out.println("found fieldlist"); :}
+				| fieldlist fieldsep field   {:System.out.println("found fieldlist"); :}
 				;
 field			::= LBRACK exp RBRACK ASSIGN exp
 				| VAR_NAME ASSIGN exp

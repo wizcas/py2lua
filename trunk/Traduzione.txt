@@ -2,47 +2,36 @@ s=0;
 pippo=40;
 while s<100 do 
 	pippo=pippo/2;
- ciccio=3
- s=s+ciccio;
- if {s>8}and{pippo<10} then 
-	break ;
-elseif {s<8}or{pippo<10} then 
-	print ("Ciao");
- end
- print (s)
+	ciccio=3
+	s=s+ciccio;
+	if (s>8)and(pippo<10) then 
+		break ;
+	elseif (s<8)or(pippo<10) then 
+		print ("Ciao");
+	end
+	print (s)
 end
 a=0
 while a<15 do 
 	a=a+1
- if {a>5}and{a<=10} then 
-	print (a," > ",5)
+if (a>5)and(a<=10) then 
+		print (a," > ",5)
 elseif a<5 then 
-	print (a," < ",5)
-elseif a>10 then 
-	print ("Troppo grande for me")
- break 
+		print (a," < ",5)
+	elseif a>10 then 
+		print ("Troppo grande for me")
+		break 
 else 
-	b=a^2
- c=a
- c=c*2
- print ("Hello 5 il quadrato e'")
- end
+		b=a^2
+		c=a
+		c=c*2
+		print ("Hello 5 il quadrato e'")
+end
 end
 print ("Salutamu")
-function f(...)
-	local kargs={}
-	for k,v in pairs(arg[1]) do
-		kargs[k]=v
-end
-	for k in pairs(kargs) do 
-	print (k,kargs[k])
-end
+function f(--[[Found parameter assign not supported in LUA
+a=1,b=2]])
+	print (a,b)
 
-end
-dic={c=11,d=12,e=13}
-f(dic)
-dic={"a"=2,"b"=4}
-for i in pairs(dic) do 
-	print (i,dic(i))
 end
 
