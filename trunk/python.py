@@ -34,6 +34,7 @@ def f(**kargs):
 dic = {c:11,d:12,e:13}
 f(dic)
 
-for i in range(4,18,2):
-	print i
+dic = {"a":2,"b":4}
+for i in dic:
+	print i,dic[i]
 

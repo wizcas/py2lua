@@ -13,9 +13,6 @@ init with {:
 
 parser code
 {:
- // Represent the number of the first usable label 
-    public int label = 0;
-
     // It can be "stdout" to write output program to standard
     // output or "file" to dump program in a file.
     public static String dumpOutput;
@@ -364,27 +361,18 @@ varargslist				::= defparameter_recoursive:d
 								((String[])RESULT)[0]="**"+n; 
 							:}
 							;
-defparameter_recoursive	::= defparameter:d {:RESULT=d;:} 
-							//| defparameter:d COMMA {:RESULT = d+",";:} 
+defparameter_recoursive	::= defparameter:d {:RESULT=d;:}
 							| defparameter_recoursive:dr COMMA defparameter:d   {:RESULT = dr+","+d;:} 
 							;
 defparameter			::= fpdef:f {:RESULT = f;:} | fpdef:f ASSIGN test:t {:RESULT=f+"="+t;:};
 fpdef					::= NAME:n {:RESULT = n;:} | LPAREN fplist:f RPAREN {:RESULT="("+f+")";:};
 fplist					::= fpdef:f {:RESULT = f;:} 
-							//| fpdef:f COMMA {:RESULT = f+",";:} 
 							| fplist:fl COMMA fpdef:f  {:RESULT = fl+","+f;:}
 							;
 
-stmt                    ::= simple_stmt:s 
-							{:
-								RESULT = s;
-								//System.out.println("simple_stmt: " + s.toString());
-							:} 
-							| compound_stmt:compound
-							{:
-								RESULT = compound;
-							:}
-							;
+stmt			::= simple_stmt:s {:RESULT = s;:} 
+					| compound_stmt:compound {:	RESULT = compound;:}
+					;
 
 simple_stmt		::= small_stmt:s NEWLINE {:RESULT = s.toString()+"\n";:} 
 					| small_stmt:s SEMI NEWLINE {:RESULT = s.toString()+";\n";:}
@@ -405,7 +393,7 @@ small_stmt		::= expr_stmt:e {:RESULT =e.toString(); System.out.println("Found ex
 						pSemWarning("Found import_stmt not supported in LUA");
 						RESULT = "--[[Import not supported in LUA\n"+i+"]]";
 					:}
-         			| assert_stmt {:System.out.println("Found assert_stmt");:}
+         			| assert_stmt:a {:System.out.println("Found assert_stmt"); RESULT = a;:}
          			| global_stmt:g 
          			{:
          				pSemWarning("Found global_stmt not supported in LUA");
@@ -413,15 +401,15 @@ small_stmt		::= expr_stmt:e {:RESULT =e.toString(); System.out.println("Found ex
          			:}
          			| exec_stmt {:System.out.println("Found exec_stmt");:}
 	                ;
-expr_stmt				::= testlist:t {:RESULT=t;:}
-							| testlist:t1 augassign:a testlist:t2 
-							{:
-								//poiche' lua non supporta le assegnazioni +=, *=, /=, -=, **=, ^= si deve modificare la regola
-								String split[] = a.toString().split("=");
-								RESULT = t1.toString() + "=" +t1.toString()+split[0]+ t2.toString();
-							:}
-							| testlist:t assign_recoursive:a {:RESULT=t.toString()+a.toString();:}
-							;
+expr_stmt	::= testlist:t {:RESULT=t;:}
+				| testlist:t1 augassign:a testlist:t2 
+				{:
+					//poiche' lua non supporta le assegnazioni +=, *=, /=, -=, **=, ^= si deve modificare la regola
+					String split[] = a.toString().split("=");
+					RESULT = t1.toString() + "=" +t1.toString()+split[0]+ t2.toString();
+				:}
+				| testlist:t assign_recoursive:a {:RESULT=t.toString()+a.toString();:}
+				;
 augassign				::= PLUSEQ:op {:RESULT=op;:}| MINUSEQ:op {:RESULT=op;:} | MULTEQ:op {:RESULT=op;:} 
 							| DIVEQ:op {:RESULT=op;:} | MODEQ:op {:RESULT=op;:} | ANDEQ:op {:RESULT=op;:} 
 							| OREQ:op {:RESULT=op;:} | EXPEQ {:RESULT="^=";:} | RSEQ:op {:RESULT=op;:} | LSEQ:op {:RESULT=op;:};
@@ -461,7 +449,7 @@ dot_rec					::= DOT {:RESULT=".";:} |  DOT dot_rec:d {:RESULT="."+d;:};
 global_stmt				::= GLOBAL name_recoursive:n {:RESULT="global "+n.toString();:};
 name_recoursive			::= NAME:n {:RESULT=n;:} | name_recoursive:nr COMMA NAME:n {:RESULT=nr+","+n;:};
 exec_stmt				::= EXEC expr:e {:RESULT = "exec " + e;:}| EXEC expr IN test | EXEC expr IN test COMMA test;
-assert_stmt				::= ASSERT testlist:t {:RESULT = "assert " + t;:};
+assert_stmt				::= ASSERT testlist:t {:RESULT = "assert (" + t + ")";:};
 
 
 
@@ -542,7 +530,7 @@ suite	::= simple_stmt:simple {:System.out.println("suite simple: " + simple.toSt
 			:}
 			;
 							
-stmt_rec	::= stmt:s {:System.out.println("TOKEN: " + parser.getToken()); RESULT = s;:} 
+stmt_rec	::= stmt:s {:RESULT = s;:} 
 				| stmt_rec:sr stmt:s {:System.out.println("TOKEN: " + parser.getToken()); RESULT = sr.toString() + " " +s.toString();:}
 				;
 
@@ -576,8 +564,7 @@ dictorsetmaker			::= test:t1 COLON test:t2 {:RESULT = t1+"="+t2;:}
 						;
 /* Sono stati eliminati i riferimenti a old_test e old_lambdef poichè superflui per lo scopo del progetto. */
 testlist_comp			::= test:t list_for:l {:RESULT = t+" "+l;:} | testlist:tlist {:RESULT = tlist;:};
-testlist				::= test:t {:RESULT = t;:} 
-						//| test:t COMMA {:RESULT = t.toString()+",";:}
+testlist				::= test:t {:RESULT = t;:}
 						| testlist:tl COMMA test:t {:RESULT = tl.toString()+","+t.toString();:}
 						;
 exprlist				::= expr:e {:RESULT = e;:} 
@@ -647,7 +634,7 @@ comp_if					::= IF test:t {:RESULT="if "+t.toString();:} | IF test:t comp_iter:c
 
 binop 					::= PLUS:p {:RESULT = p;:} | MINUS:m {:RESULT = m;:}| MULT:m {:RESULT = m;:}
 							| DIVIDE:d {:RESULT = d;:}| EXPON:ex {:RESULT = ex;:}| MOD:m {:RESULT = m;:}
-							| IS:is {:RESULT = is;:}| IN:in {:RESULT = in;:}| IS NOT:isnot {:RESULT = isnot;:}
+							| IS:is {:RESULT = "==";:}| IN:in {:RESULT = in;:}| IS NOT:isnot {:RESULT = "~=";:}
 							| NOT IN:notin {:RESULT = notin;:}| LSHIFT:lshift {:RESULT = lshift;:}| RSHIFT: rshift{:RESULT = rshift;:}
 		 					| MINOR:min {:RESULT = min;:}| MINEQ:mineq {:RESULT = mineq;:}| MAIOR:mag {:RESULT = mag;:}
 		 					| MAIEQ:maieq {:RESULT = maieq;:}| EQ:eq {:RESULT = eq;:}| NEQ {:RESULT = "~=";:}
