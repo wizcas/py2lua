@@ -1,37 +1,42 @@
-s=0;
-pippo=40;
-while s<100 do 
-	pippo=pippo/2;
-	ciccio=3
-	s=s+ciccio;
-	if (s>8)and(pippo<10) then 
-		break ;
-	elseif (s<8)or(pippo<10) then 
-		print ("Ciao");
-	end
-	print (s)
+function funzione1()
+	c="gigi la trottola"
+	print (c)
+end
+function funzione2(a,b)
+	b=b or 1
+	c=a+b;
+	print (c)
+end
+function funzione3(a,f,aaa)
+	a=a or 4
+	f=f or 18
+	c=a*f
+	print (c)
+for k in pairs(a) do 
+		print (k)
+end
 end
 a=0
 while a<15 do 
 	a=a+1
 if (a>5)and(a<=10) then 
 		print (a," > ",5)
-elseif a<5 then 
+	elseif a<5 then 
 		print (a," < ",5)
 	elseif a>10 then 
 		print ("Troppo grande for me")
-		break 
+		print ("funzione2 (passo un parametro): ")
+		funzione2(a)
+		print ("funzione2 (passo due parametri): ")
+		funzione2(a,4)
+		break ;
 else 
 		b=a^2
 		c=a
 		c=c*2
-		print ("Hello 5 il quadrato e'")
+		print ("Hello 5 il quadrato e' ",b,"il doppio e' ",c)
+		print ("funzione1: ",funzione1())
 end
 end
 print ("Salutamu")
-function f(--[[Found parameter assign not supported in LUA
-a=1,b=2]])
-	print (a,b)
-
-end
 

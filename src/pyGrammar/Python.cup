@@ -104,6 +104,31 @@ action code
     {
     	return ((PythonLex)parser.getScanner()).stackLength()-1;
     }
+    
+    private String transformDefaultParams(StringBuilder sb, String param)
+    {
+    	StringBuilder suiteAdding=new StringBuilder();
+    	String[] splittedParams = param.split(",");
+		String[] varname;
+		for(int i = 0; i<splittedParams.length; i++)
+		{
+			System.err.println("for splittedParams: " + splittedParams[i]);
+			varname = splittedParams[i].split("="); 
+			sb.append(varname[0]);
+			if(i != splittedParams.length-1)
+				sb.append(",");
+			if(varname.length>1)
+			{
+				suiteAdding.append("\n\t");
+				suiteAdding.append(varname[0]);
+				suiteAdding.append("=");
+				suiteAdding.append(varname[0]);
+				suiteAdding.append(" or ");
+				suiteAdding.append(varname[1]);
+			}
+		}
+		return suiteAdding.toString();
+    }
 
 :}
 
@@ -206,10 +231,11 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 				StringBuilder sb = new StringBuilder();
 				sb.append("function ");
 				sb.append(n);
+				String suite = s.toString();
 				if(p == null)
 				{
 					sb.append("()");
-					sb.append(s.toString());
+					sb.append(suite);
 				}
 				else
 				{
@@ -245,18 +271,33 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 							}
 						}
 						else{
-							sb.append(params[0]);
-							sb.append(")");
+							
+							if(params[0].contains("="))
+							{
+								String suiteAdding = transformDefaultParams(sb,params[0]);
+								sb.append(")");
+								sb.append(suiteAdding);
+							}
+							else
+							{
+								sb.append(params[0]);
+								sb.append(")");
+							}
 						}
 					}
 					else if(params.length == 2)
 					{
 						if(!params[0].contains("*"))
 						{
-							sb.append(params[0]);
+							String suiteAdding = "";
+							if(params[0].contains("="))
+								suiteAdding = transformDefaultParams(sb,params[0]);
+							else
+								sb.append(params[0]);
 							sb.append(",");
 							sb.append("...");
 							sb.append(")");
+							sb.append(suiteAdding);
 							if(params[1].startsWith("**")) //abbiamo **kargs
 							{
 								argsName = params[1].substring(2);
@@ -270,7 +311,7 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 							else
 							{
 								argsName = params[1].substring(1); //abbiamo *args
-								sb.append("\nlocal ");
+								sb.append("\n\tlocal ");
 								sb.append(argsName);
 								sb.append("={}\n\t");
 								sb.append("for i=1,#arg do\n\t\t");
@@ -285,10 +326,10 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 							sb.append(")");
 							argsName = params[0].substring(1);
 							kargsName = params[1].substring(2);
-							sb.append("\nlocal ");
+							sb.append("\n\tlocal ");
 							sb.append(argsName);
 							sb.append("={}");
-							sb.append("\nlocal ");
+							sb.append("\n\tlocal ");
 							sb.append(kargsName);
 							sb.append("={}");
 							sb.append("\n\tfor k,v in pairs(arg) do\n\t\tif type(k) == 'number' then\n\t\t\t");
@@ -301,19 +342,24 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 					}
 					else //params sono tre quindi ci sono quelli normali ed entrambi *args e **kargs
 					{
-						sb.append(params[0]);
+						String suiteAdding = "";
+						if(params[0].contains("="))
+							suiteAdding = transformDefaultParams(sb,params[0]);
+						else
+							sb.append(params[0]);
 						sb.append(",");
 						sb.append("...");
 						sb.append(")");
+						sb.append(suiteAdding);
 						argsName = params[1].substring(1);
 						kargsName = params[2].substring(2);
 						//creaimo nella funzione lua due variabili locali fittizie, con i nomi degli argomenti, così
 						//da non modificare il resto della suite, visto che vengono usate come un dizionario nel caso
 						//di ** e come lista nel caso di *
-						sb.append("\nlocal ");
+						sb.append("\n\tlocal ");
 						sb.append(argsName);
 						sb.append("={}");
-						sb.append("\nlocal ");
+						sb.append("\n\tlocal ");
 						sb.append(kargsName);
 						sb.append("={}");
 						//riempiamo tramite arg ciascuna di esser, discernendo se vi sono elementi chiave=valore oppure solo valore
@@ -326,18 +372,16 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 						sb.append(kargsName);
 						sb.append("[k]=v\n\tend\nend");
 					}					
-					sb.append(s.toString());
+					sb.append(suite);
 				}
-				
-				sb.append("\nend\n");
 				RESULT = sb.toString();
 			:};
 parameters				::= LPAREN RPAREN {::} 
 							| LPAREN varargslist:v RPAREN 
 							{:
 								String[] var = (String[])v;
-								if(var[0].contains("="))
-									var[0] = "--[[Found parameter assign not supported in LUA\n"+var[0]+"]]";
+								//if(var[0].contains("="))
+									//var[0] = "--[[Found parameter assign not supported in LUA\n"+var[0]+"]]";
 								RESULT = var;
 								
 							:};
@@ -393,7 +437,14 @@ fplist					::= fpdef:f {:RESULT = f;:}
 							;
 
 stmt			::= simple_stmt:s {:RESULT = s;:} 
-					| compound_stmt:compound {:	RESULT = compound;:}
+					| compound_stmt:compound 
+					{:
+						String tab = "";
+						for(int i=0; i<getIndentation(); i++)
+							tab+="\t";
+						System.out.println("Compound indentation: " + getIndentation());	
+						RESULT =tab+ compound+tab+"end\n";
+					:}
 					;
 
 simple_stmt		::= small_stmt:s NEWLINE {:RESULT = s.toString()+"\n";:} 
@@ -453,7 +504,10 @@ expr_stmt	::= testlist:t {:RESULT=t;:}
 augassign				::= PLUSEQ:op {:RESULT=op;:}| MINUSEQ:op {:RESULT=op;:} | MULTEQ:op {:RESULT=op;:} 
 							| DIVEQ:op {:RESULT=op;:} | MODEQ:op {:RESULT=op;:} | ANDEQ:op {:RESULT=op;:} 
 							| OREQ:op {:RESULT=op;:} | EXPEQ {:RESULT="^=";:} | RSEQ:op {:RESULT=op;:} | LSEQ:op {:RESULT=op;:};
-print_stmt				::= PRINT {:RESULT = "print ";:} | PRINT testlist:t {:RESULT = "print (" + t.toString()+")";:}| PRINT RSHIFT testlist:t {:RESULT = "print >>" + t.toString();:};
+print_stmt				::= PRINT {:RESULT = "print ";:} | PRINT testlist:t {:RESULT = "print (" + t.toString()+")";:}
+							| PRINT RSHIFT testlist:t {:RESULT = "print >>" + t.toString();:}
+							| PRINT testlist:t COMMA {:RESULT = "print (" + t.toString()+")";:}
+							;
 range_stmt				::= RANGE LPAREN expr:e1 COMMA expr:e2 COMMA expr:e3 RPAREN {:RESULT = new String[]{e1.toString(),e2.toString(),e3.toString()};:}
 							| RANGE LPAREN expr:e1 COMMA expr:e2 RPAREN {:RESULT = new String[]{e1.toString(),e2.toString()};:}
 							;
@@ -504,19 +558,21 @@ compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt
 					;
 if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec 
 							{:
-								String tab = "";
+								/*String tab = "";
 								for(int i=0; i<getIndentation(); i++)
 									tab+="\t";
 									System.out.println(getIndentation());
-								RESULT =tab+ "if " + t.toString() + " then " + s.toString() +tab+ else_rec + tab+"end\n";
+								RESULT =tab+ "if " + t.toString() + " then " + s.toString() +tab+ else_rec + tab+"end\n";*/
+								RESULT ="if " + t.toString() + " then " + s.toString() + else_rec;
 							:}
 							| IF test:t COLON suite:s 
 							{:
-								String tab = "";
+								/*String tab = "";
 								for(int i=0; i<getIndentation(); i++)
 									tab+="\t";
 									System.out.println(getIndentation());
-								RESULT=tab+ "if " + t + " then " + s + tab+"end";
+								RESULT=tab+ "if " + t + " then " + s + tab+"end";*/
+								RESULT = "if " + t + " then " + s;
 							:}
 							| IF test:t COLON suite:s1 ELSE COLON suite:s2 
 							{:
@@ -524,7 +580,8 @@ if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec
 								for(int i=0; i<getIndentation(); i++)
 									tab+="\t";
 									System.out.println(getIndentation());
-								RESULT=tab+ "if " + t + " then " + s1 + tab+"else " + s2.toString() + tab+"end\n";
+								//RESULT=tab+ "if " + t + " then " + s1 + tab+"else " + s2.toString() + tab+"end\n";
+								RESULT="if " + t + " then " + s1 + tab+"else " + s2.toString();
 							:}
 							| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 
 							{:
@@ -532,10 +589,17 @@ if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec
 								for(int i=0; i<getIndentation(); i++)
 									tab+="\t";
 									System.out.println(getIndentation());
-								RESULT=tab+ "if " + t + " then " + s1 +tab+ else_rec + tab+"else " + s2.toString() + tab +"end\n";
+								//RESULT=tab+ "if " + t + " then " + s1 +tab+ else_rec + tab+"else " + s2.toString() + tab +"end\n";
+								RESULT="if " + t + " then " + s1 + else_rec +tab+ "else " + s2.toString();
 							:}
 							;
-else_recoursive		::= ELIF test:t COLON suite:s {:RESULT ="elseif " + t.toString() + " then " + s.toString();:}
+else_recoursive		::= ELIF test:t COLON suite:s 
+						{:
+							String tab = "";
+							for(int i=0; i<getIndentation(); i++)
+								tab+="\t";
+							RESULT =tab+"elseif " + t.toString() + " then " + s.toString();
+						:}
 						| else_recoursive:else_rec ELIF test:t COLON suite:s  {:
 						String tab = "";
 						for(int i=0; i<getIndentation(); i++)
@@ -546,10 +610,12 @@ else_recoursive		::= ELIF test:t COLON suite:s {:RESULT ="elseif " + t.toString(
 while_stmt	::= WHILE test:t COLON suite:s 
 				{:
 					//System.out.println("while_stmt->WHILE test COLON suite");
-					String tab = "";
+					/*String tab = "";
 					for(int i=0; i<getIndentation(); i++)
 						tab+="\t";
-					RESULT = tab+"while " + t.toString() + " do " + s.toString() +tab+ "end\n";
+					System.out.println("WHILE indentation: " + getIndentation());
+					RESULT = tab+"while " + t.toString() + " do " + s.toString() +tab+ "end\n";*/
+					RESULT = "while " + t.toString() + " do " + s.toString();
 					//dumpln("while " + t.toString() + " do " + s.toString() + " end");
 				:} 
 				| WHILE test:t COLON suite:s1 ELSE COLON suite:s2
@@ -567,7 +633,7 @@ for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
 					else
 						keyIdent = "k";
 					//String suiteMod = s.toString().replace(e.toString(), t+"["+keyIdent+"]");
-					RESULT = "for " + e + " in pairs("+t+") do "+s+"end\n"; //se traduciamo letteralmente lua non considera la lista di elementi, quindi dobbiamo inserire il pairs
+					RESULT = "for " + e + " in pairs("+t+") do "+s; //se traduciamo letteralmente lua non considera la lista di elementi, quindi dobbiamo inserire il pairs
 				:} 
 				| FOR exprlist IN testlist COLON suite ELSE COLON suite
 				| FOR exprlist:e IN range_stmt:r COLON suite:s 
