@@ -1,3 +1,6 @@
+#Questo documento contine degli esempi di definizione di funzioni
+#Inoltre dei cicli while per fare delle prove
+
 def funzione1():
 	c= "gigi la trottola"
 	print c
@@ -6,7 +9,7 @@ def funzione2(a, b=1):
 	c= a+b;
 	print c
 
-def funzione3 (a=4,f=18,aaa):
+def funzione3 (a=4,f=18,*aaa):
 	c = a*f
 	print c
 	for k in aaa:
@@ -32,3 +35,13 @@ while a < 15:
 		print "Hello 5 il quadrato e' ", b, "il doppio e' ", c
 		print "funzione1: ",funzione1()
 print "Salutamu"
+
+for i in [4,5,6,7,8]:
+	print i
+
+dic = {"c":1,"d":2,"e":5}
+for i in dic:
+	print i, dic[i]
+	dic[i] += 20
+
+

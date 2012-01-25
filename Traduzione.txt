@@ -1,3 +1,5 @@
+--Questo documento contine degli esempi di definizione di funzioni
+--Inoltre dei cicli while per fare delle prove
 function funzione1()
 	c="gigi la trottola"
 	print (c)
@@ -7,13 +9,23 @@ function funzione2(a,b)
 	c=a+b;
 	print (c)
 end
-function funzione3(a,f,aaa)
+function funzione3(a,f,...)
 	a=a or 4
 	f=f or 18
+	local aaa={}
+	for i=1,#arg do
+		aaa[i]=arg[i]
+	end
 	c=a*f
 	print (c)
-for k in pairs(a) do 
+if unpack(aaa)==nil then
+for k,value_dic in pairs(aaa) do 
 		print (k)
+end
+else
+for key_list,k in pairs(aaa) do 
+		print (k)
+ end
 end
 end
 a=0
@@ -39,4 +51,25 @@ else
 end
 end
 print ("Salutamu")
+if unpack({4,5,6,7,8})==nil then
+for i,value_dic in pairs({4,5,6,7,8}) do 
+	print (i)
+end
+else
+for key_list,i in pairs({4,5,6,7,8}) do 
+	print (i)
+ end
+end
+dic={"c"=1,"d"=2,"e"=5}
+if unpack(dic)==nil then
+for i,value_dic in pairs(dic) do 
+	print (i,value_dic)
+	value_dic=value_dic+20
+end
+else
+for key_list,i in pairs(dic) do 
+	print (i,dic[i])
+	dic[i]=dic[i]+20
+ end
+end
 
