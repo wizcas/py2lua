@@ -23,12 +23,12 @@ import static pyGrammar.PythonSym.*;
 %cup
 
 %eofval{
-		System.out.println("Checking indentation eofval");
+		//System.out.println("Checking indentation eofval");
 
 		if(indentStack.size()>1)
 		{   
 		   	indentStack.pop();
-           	System.err.println("EOF DEDENT");
+           	//System.err.println("EOF DEDENT");
            	return sym(DEDENT);
         }
 
@@ -49,21 +49,21 @@ import static pyGrammar.PythonSym.*;
 		int level  = indentStack.peek();
 		int indent = yytext().replace("\t", "        ").length();
    
-		System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
+		//System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
    
 		if (indent > level)
 		{               			
 			indentStack.push(indent);
-			System.err.println("INDENT");
+			//System.err.println("INDENT");
 			return sym(INDENT);
    		}
    		else if (indent < level)
    		{
            	indentStack.pop();
-           	System.err.println("DEDENT");
+           	//System.err.println("DEDENT");
            	return sym(DEDENT);
    		}
-   		System.err.println("...");
+   		//System.err.println("...");
    		return null;
 	}
        
@@ -200,21 +200,21 @@ SEMI		= ";"
 {NEWLINE}+	{ 
 				
 				yybegin(linebegin);
-				System.out.println("NEWLINE");
+				//System.out.println("NEWLINE");
 				return sym(NEWLINE); 
 			}				
 <linebegin>\t+
 			{ 
-				System.out.println("TAB INTERPRETATION");
+				//System.out.println("TAB INTERPRETATION");
 				int level  = indentStack.peek();
 				int indent = yytext().replace("\t", "        ").length();
-				System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
+				//System.out.println("Checking indentation... Level: " + level + " Indent: " + indent );
 			   
 				if (indent > level)
 				{               			
 					indentStack.push(indent);
 					yybegin(YYINITIAL);
-					System.out.println("INDENT");
+					//System.out.println("INDENT");
 					return sym(INDENT);
 		   		}
 		   		else if (indent < level)
@@ -222,10 +222,10 @@ SEMI		= ";"
 		           	indentStack.pop();
 		           	yypushback(yytext().length());
 		           	yybegin(linebegin);
-		           	System.out.println("DEDENT");
+		           	//System.out.println("DEDENT");
 		           	return sym(DEDENT);
 		   		}
-		   		System.out.println("Going YYINITIAL");
+		   		//System.out.println("Going YYINITIAL");
 		   		yybegin(YYINITIAL);
 			}
 <linebegin>[^\t] 
@@ -237,10 +237,10 @@ SEMI		= ";"
 			indentStack.pop();
 			yypushback(yytext().length());
            	yybegin(linebegin);
-           	System.out.println("DEDENT");
+           	//System.out.println("DEDENT");
            	return sym(DEDENT);
 		}
-		System.out.println("Pushing Back & Goin initial"); 
+		//System.out.println("Pushing Back & Goin initial"); 
 		yypushback(yytext().length()); 
 		yybegin(YYINITIAL); 
 	}
@@ -335,6 +335,6 @@ SEMI		= ";"
 {HEX}			{ return sym(HEX);}
 {BIN}			{ return sym(BIN);}
 {NAME}    		{ return sym(NAME); }
-{COMMENT}   	{ return null;}
+{COMMENT}   	{ return sym(COMMENT);}
 
 .				{System.out.println("SCANNER ERROR: "+yytext());}

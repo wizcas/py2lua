@@ -132,17 +132,15 @@ action code
 
 :}
 
-terminal        AND, AS, ASSERT, BREAK, CLASS, CONTINUE, WHITESPACE;
-terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC;
+terminal        AND, AS, ASSERT, BREAK, CLASS, CONTINUE;
+terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC, COMMENT;
 terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
-terminal        IN, IS, LAMBDA, NOT, OR, PASS;
+terminal        IN, IS, LAMBDA, NOT, OR, PASS,YIELD, TRIDOT, DIVDIV,NEWLINE, MULTMULT, INDENT, DEDENT;
 terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH, RANGE;
-terminal        YIELD, TRIDOT, DIVDIV;
 terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
 terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
 terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
 terminal		DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
-terminal        NEWLINE, MULTMULT, INDENT, DEDENT;
 terminal String NAME, STRING;
 
 non terminal	file_input, file_input_recoursive, stmt,simple_stmt, expr_stmt, print_stmt,del_stmt,flow_stmt,import_stmt, assert_stmt,global_stmt,exec_stmt;
@@ -150,8 +148,8 @@ non terminal	number, binop, unop, comparison, lambdef, expr, atom, test, trailer
 non terminal	list_iter, list_for, list_if, varargslist, defparameter_recoursive, defparameter, fpdef, fplist, name_recoursive, range_stmt;
 non terminal	augassign, assign_recoursive, return_stmt,raise_stmt, dotted_name, dotted_as_name, dotted_as_names, import_as_name, import_as_names, dot_rec;
 non terminal	arglist, subscriptlist, subscript,subscript_rec,sliceop,argument,argument_rec,comp_for,comp_iter,comp_if, compound_stmt;
-non terminal	if_stmt, while_stmt, for_stmt, try_stmt, with_stmt, funcdef, classdef, decorated, suite, stmt_rec, small_stmt, small_stmt_rec;
-non terminal	newline_or_stmt, else_recoursive,except_clause, except_clause_recoursive, with_item, with_item_recoursive, decorator, decorators, parameters;
+non terminal	if_stmt, while_stmt, for_stmt, try_stmt, with_stmt, funcdef, classdef, decorated, suite, stmt_rec, small_stmt, small_stmt_rec, comment;
+non terminal	else_recoursive,except_clause, except_clause_recoursive, with_item, with_item_recoursive, decorator, decorators, parameters;
 
 
 /*Precedenza operatori: 
@@ -191,22 +189,23 @@ precedence right MULTMULT;
 * NB: compound_stmt in single_input is followed by extra NEWLINE!
 */
 
-file_input	::= file_input_recoursive:f {:
-								try {
-									if(f != null)
-									{
-										dumpln(f.toString());
-										BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
-										String outText = parser.outputBuffer.toString();
-										out.write(outText);
-										out.close();
-									}
-								}
-                                catch (IOException e)
-                                {
-                                	e.printStackTrace();
-                                }
-                                :};
+file_input	::= file_input_recoursive:f 
+			{:
+				try {
+					if(f != null)
+					{
+						dumpln(f.toString());
+						BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
+						String outText = parser.outputBuffer.toString();
+						out.write(outText);
+						out.close();
+					}
+				}
+	            catch (IOException e)
+	            {
+	            	e.printStackTrace();
+	            }
+			:};
 file_input_recoursive		::= NEWLINE file_input_recoursive:f {:RESULT = "\n"+f;:}
 								| stmt:s file_input_recoursive:f 
 								{:
@@ -220,12 +219,12 @@ file_input_recoursive		::= NEWLINE file_input_recoursive:f {:RESULT = "\n"+f;:}
 								| {:RESULT = "";:}
 								;
 
-decorator				::= AT dotted_name NEWLINE
-							| AT dotted_name LPAREN RPAREN NEWLINE
-							| AT dotted_name LPAREN arglist RPAREN NEWLINE
-							;
-decorators				::= decorator | decorators decorator ;
-decorated				::= decorators classdef | decorators funcdef;
+decorator		::= AT dotted_name NEWLINE
+					| AT dotted_name LPAREN RPAREN NEWLINE
+					| AT dotted_name LPAREN arglist RPAREN NEWLINE
+					;
+decorators		::= decorator | decorators decorator ;
+decorated		::= decorators classdef | decorators funcdef;
 funcdef		::= DEF NAME:n parameters:p COLON suite:s 
 			{:
 				StringBuilder sb = new StringBuilder();
@@ -239,6 +238,9 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 				}
 				else
 				{
+					String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
 					sb.append("(");
 					String[] params = (String[])p;
 					String argsName=null;
@@ -252,22 +254,34 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 							if(params[0].contains("**")) //abbiamo **kargs
 							{
 								argsName = params[0].substring(2);
-								sb.append("\n\tlocal ");
+								sb.append("\n\t");
+								sb.append(tab);
+								sb.append("\tlocal ");
 								sb.append(argsName);
 								sb.append("={}\n\t");
+								sb.append(tab);
 								sb.append("for k,v in pairs(arg[1]) do\n\t\t");
+								sb.append(tab);
 								sb.append(argsName);
-								sb.append("[k]=v\nend");
+								sb.append("[k]=v\n\t");
+								sb.append(tab);
+								sb.append("end");
 							}
 							else
 							{
 								argsName = params[0].substring(1); //abbiamo *args
-								sb.append("\nlocal ");
+								sb.append("\n\t");
+								sb.append(tab);
+								sb.append("local ");
 								sb.append(argsName);
 								sb.append("={}\n\t");
+								sb.append(tab);
 								sb.append("for i=1,#arg do\n\t\t");
+								sb.append(tab);
 								sb.append(argsName);
-								sb.append("[i]=arg[i]\n\tend");
+								sb.append("[i]=arg[i]\n\t");
+								sb.append(tab);
+								sb.append("end");
 							}
 						}
 						else{
@@ -301,22 +315,34 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 							if(params[1].startsWith("**")) //abbiamo **kargs
 							{
 								argsName = params[1].substring(2);
-								sb.append("\n\tlocal ");
+								sb.append("\n\t");
+								sb.append(tab);
+								sb.append("local ");
 								sb.append(argsName);
 								sb.append("={}\n\t");
+								sb.append(tab);
 								sb.append("for k,v in pairs(arg[1]) do\n\t\t");
+								sb.append(tab);
 								sb.append(argsName);
-								sb.append("[k]=v\nend");
+								sb.append("[k]=v\n\t");
+								sb.append(tab);
+								sb.append("end");
 							}
 							else
 							{
 								argsName = params[1].substring(1); //abbiamo *args
-								sb.append("\n\tlocal ");
+								sb.append("\n\t");
+								sb.append(tab);
+								sb.append("local ");
 								sb.append(argsName);
 								sb.append("={}\n\t");
+								sb.append(tab);
 								sb.append("for i=1,#arg do\n\t\t");
+								sb.append(tab);
 								sb.append(argsName);
-								sb.append("[i]=arg[i]\n\tend");
+								sb.append("[i]=arg[i]\n\t");
+								sb.append(tab);
+								sb.append("end");
 							}
 						}
 						else //caso parametri function(*args, **kargs)
@@ -326,17 +352,29 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 							sb.append(")");
 							argsName = params[0].substring(1);
 							kargsName = params[1].substring(2);
-							sb.append("\n\tlocal ");
+							sb.append("\n\t");
+							sb.append(tab);
+							sb.append("local ");
 							sb.append(argsName);
 							sb.append("={}");
-							sb.append("\n\tlocal ");
+							sb.append("\n\t");
+							sb.append(tab);
+							sb.append("local ");
 							sb.append(kargsName);
 							sb.append("={}");
-							sb.append("\n\tfor k,v in pairs(arg) do\n\t\tif type(k) == 'number' then\n\t\t\t");
+							sb.append("\n\t");
+							sb.append(tab);
+							sb.append("for k,v in pairs(arg) do\n\t\tif type(k) == 'number' then\n\t\t\t");
+							sb.append(tab);
 							sb.append(argsName);
-							sb.append(".append(v)\n\t\telse\n\t\t\t");
+							sb.append("[k]=v\n\t\telse\n\t\t\t");
+							sb.append(tab);
 							sb.append(kargsName);
-							sb.append("[k]=v\n\t\tend\n\tend");
+							sb.append("[k]=v\n\t\t");
+							sb.append(tab);
+							sb.append("end\n\t");
+							sb.append(tab);
+							sb.append("end");
 						}
 						
 					}
@@ -368,7 +406,7 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 						//	else kargsName[k]=v
 						sb.append("for k,v in pairs(arg) do\n\tif type(k) == 'number' then\n\t\t");
 						sb.append(argsName);
-						sb.append(".append(v)\n\telse\n\t\t");
+						sb.append("[k]=v\n\telse\n\t\t");
 						sb.append(kargsName);
 						sb.append("[k]=v\n\tend\nend");
 					}					
@@ -376,15 +414,16 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 				}
 				RESULT = sb.toString();
 			:};
-parameters				::= LPAREN RPAREN {::} 
-							| LPAREN varargslist:v RPAREN 
-							{:
-								String[] var = (String[])v;
-								//if(var[0].contains("="))
-									//var[0] = "--[[Found parameter assign not supported in LUA\n"+var[0]+"]]";
-								RESULT = var;
-								
-							:};
+parameters		::= LPAREN RPAREN {::} 
+					| LPAREN varargslist:v RPAREN 
+					{:
+						String[] var = (String[])v;
+						//if(var[0].contains("="))
+							//var[0] = "--[[Found parameter assign not supported in LUA\n"+var[0]+"]]";
+						RESULT = var;
+						
+					:}
+					;
 
 varargslist				::= defparameter_recoursive:d 
 							{:
@@ -432,9 +471,9 @@ defparameter_recoursive	::= defparameter:d {:RESULT=d;:}
 							;
 defparameter			::= fpdef:f {:RESULT = f;:} | fpdef:f ASSIGN test:t {:pSemWarning("Found parameter assign not supported in LUA"); RESULT=f+"="+t;:};
 fpdef					::= NAME:n {:RESULT = n;:} | LPAREN fplist:f RPAREN {:RESULT="("+f+")";:};
-fplist					::= fpdef:f {:RESULT = f;:} 
-							| fplist:fl COMMA fpdef:f  {:RESULT = fl+","+f;:}
-							;
+fplist			::= fpdef:f {:RESULT = f;:} 
+					| fplist:fl COMMA fpdef:f  {:RESULT = fl+","+f;:}
+					;
 
 stmt			::= simple_stmt:s {:RESULT = s;:} 
 					| compound_stmt:compound 
@@ -491,6 +530,7 @@ small_stmt		::= expr_stmt:e
          				RESULT = "--[[Global not supported in LUA\n"+g+"]]";
          			:}
          			| exec_stmt {:System.out.println("Found exec_stmt");:}
+         			| comment:c {:RESULT = c;:}
 	                ;
 expr_stmt	::= testlist:t {:RESULT=t;:}
 				| testlist:t1 augassign:a testlist:t2 
@@ -501,9 +541,10 @@ expr_stmt	::= testlist:t {:RESULT=t;:}
 				:}
 				| testlist:t assign_recoursive:a {:RESULT=t.toString()+a.toString();:}
 				;
-augassign				::= PLUSEQ:op {:RESULT=op;:}| MINUSEQ:op {:RESULT=op;:} | MULTEQ:op {:RESULT=op;:} 
-							| DIVEQ:op {:RESULT=op;:} | MODEQ:op {:RESULT=op;:} | ANDEQ:op {:RESULT=op;:} 
-							| OREQ:op {:RESULT=op;:} | EXPEQ {:RESULT="^=";:} | RSEQ:op {:RESULT=op;:} | LSEQ:op {:RESULT=op;:};
+augassign		::= PLUSEQ:op {:RESULT=op;:}| MINUSEQ:op {:RESULT=op;:} | MULTEQ:op {:RESULT=op;:} 
+					| DIVEQ:op {:RESULT=op;:} | MODEQ:op {:RESULT=op;:} | ANDEQ:op {:RESULT=op;:} 
+					| OREQ:op {:RESULT=op;:} | EXPEQ {:RESULT="^=";:} | RSEQ:op {:RESULT=op;:} | LSEQ:op {:RESULT=op;:}
+					;
 print_stmt				::= PRINT {:RESULT = "print ";:} | PRINT testlist:t {:RESULT = "print (" + t.toString()+")";:}
 							| PRINT RSHIFT testlist:t {:RESULT = "print >>" + t.toString();:}
 							| PRINT testlist:t COMMA {:RESULT = "print (" + t.toString()+")";:}
@@ -556,43 +597,43 @@ compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt
 					| classdef {:System.out.println("classdef");:}
 					| decorated {:System.out.println("decorated");:}
 					;
-if_stmt					::= IF test:t COLON suite:s else_recoursive:else_rec 
-							{:
-								/*String tab = "";
-								for(int i=0; i<getIndentation(); i++)
-									tab+="\t";
-									System.out.println(getIndentation());
-								RESULT =tab+ "if " + t.toString() + " then " + s.toString() +tab+ else_rec + tab+"end\n";*/
-								RESULT ="if " + t.toString() + " then " + s.toString() + else_rec;
-							:}
-							| IF test:t COLON suite:s 
-							{:
-								/*String tab = "";
-								for(int i=0; i<getIndentation(); i++)
-									tab+="\t";
-									System.out.println(getIndentation());
-								RESULT=tab+ "if " + t + " then " + s + tab+"end";*/
-								RESULT = "if " + t + " then " + s;
-							:}
-							| IF test:t COLON suite:s1 ELSE COLON suite:s2 
-							{:
-								String tab = "";
-								for(int i=0; i<getIndentation(); i++)
-									tab+="\t";
-									System.out.println(getIndentation());
-								//RESULT=tab+ "if " + t + " then " + s1 + tab+"else " + s2.toString() + tab+"end\n";
-								RESULT="if " + t + " then " + s1 + tab+"else " + s2.toString();
-							:}
-							| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 
-							{:
-								String tab = "";
-								for(int i=0; i<getIndentation(); i++)
-									tab+="\t";
-									System.out.println(getIndentation());
-								//RESULT=tab+ "if " + t + " then " + s1 +tab+ else_rec + tab+"else " + s2.toString() + tab +"end\n";
-								RESULT="if " + t + " then " + s1 + else_rec +tab+ "else " + s2.toString();
-							:}
-							;
+if_stmt		::= IF test:t COLON suite:s else_recoursive:else_rec 
+				{:
+					/*String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+						System.out.println(getIndentation());
+					RESULT =tab+ "if " + t.toString() + " then " + s.toString() +tab+ else_rec + tab+"end\n";*/
+					RESULT ="if " + t.toString() + " then " + s.toString() + else_rec;
+				:}
+				| IF test:t COLON suite:s 
+				{:
+					/*String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+						System.out.println(getIndentation());
+					RESULT=tab+ "if " + t + " then " + s + tab+"end";*/
+					RESULT = "if " + t + " then " + s;
+				:}
+				| IF test:t COLON suite:s1 ELSE COLON suite:s2 
+				{:
+					String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+						System.out.println(getIndentation());
+					//RESULT=tab+ "if " + t + " then " + s1 + tab+"else " + s2.toString() + tab+"end\n";
+					RESULT="if " + t + " then " + s1 + tab+"else " + s2.toString();
+				:}
+				| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 
+				{:
+					String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+						System.out.println(getIndentation());
+					//RESULT=tab+ "if " + t + " then " + s1 +tab+ else_rec + tab+"else " + s2.toString() + tab +"end\n";
+					RESULT="if " + t + " then " + s1 + else_rec +tab+ "else " + s2.toString();
+				:}
+				;
 else_recoursive		::= ELIF test:t COLON suite:s 
 						{:
 							String tab = "";
@@ -625,15 +666,29 @@ while_stmt	::= WHILE test:t COLON suite:s
 				;
 for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
 				{:
-				System.out.println("explist: " + e);
-				System.out.println("suite: " + s);
-				String keyIdent;
-					if(e.toString().equals("k"))
-						keyIdent = "key";
-					else
-						keyIdent = "k";
-					//String suiteMod = s.toString().replace(e.toString(), t+"["+keyIdent+"]");
-					RESULT = "for " + e + " in pairs("+t+") do "+s; //se traduciamo letteralmente lua non considera la lista di elementi, quindi dobbiamo inserire il pairs
+					//se traduciamo letteralmente lua non considera la lista di elementi, quindi dobbiamo inserire il pairs
+					String suiteMod = s.toString().replace(t + "["+e+"]", "value_dic");
+					StringBuilder sb = new StringBuilder();
+					sb.append("if unpack(");
+					sb.append(t);
+					sb.append(")==nil then\n");
+					sb.append("for ");
+					sb.append(e);
+					sb.append(",value_dic");
+					sb.append(" in pairs(");
+					sb.append(t);
+					sb.append(") do ");
+					sb.append(suiteMod);
+					sb.append("end\nelse\n");
+					sb.append("for key_list,");
+					sb.append(e);
+					sb.append(" in pairs(");
+					sb.append(t);
+					sb.append(") do ");
+					sb.append(s);
+					sb.append(" end\n");
+					//RESULT = "for " + "key_" + e +","+ e + " in pairs("+t+") do "+s;
+					RESULT = sb.toString(); 
 				:} 
 				| FOR exprlist IN testlist COLON suite ELSE COLON suite
 				| FOR exprlist:e IN range_stmt:r COLON suite:s 
@@ -708,8 +763,7 @@ testlist_comp			::= test:t list_for:l {:RESULT = t+" "+l;:} | testlist:tlist {:R
 testlist				::= test:t {:RESULT = t;:}
 						| testlist:tl COMMA test:t {:RESULT = tl.toString()+","+t.toString();:}
 						;
-exprlist				::= expr:e {:RESULT = e;:} 
-							//| expr:e COMMA {:RESULT = e + ",";:}
+exprlist				::= expr:e {:RESULT = e;:}
 							|exprlist:explist COMMA expr:e {:RESULT = explist + "," + e;:}
 							;
 
@@ -791,3 +845,4 @@ number					::= FLOAT:f {:RESULT = Float.parseFloat(f.toString());:}
 							| OCT:o {:RESULT = o.toString();:}
 							| BIN:b {:RESULT = b.toString();:}
 							;
+comment		::= COMMENT:c {:RESULT = c.toString().replace("#","--");:};
