@@ -499,7 +499,10 @@ small_stmt		::= expr_stmt:e
 						String tab = "";
 						for(int i=0; i<getIndentation(); i++)
 							tab+="\t";
-						RESULT =tab+e.toString(); System.out.println("Found expr_stmt");
+						if(e!=null)
+							RESULT =tab+e.toString();
+						else
+							RESULT = tab + " nil";
 					:}
 					| print_stmt:p 
 					{:
@@ -589,8 +592,8 @@ assert_stmt				::= ASSERT testlist:t {:RESULT = "assert (" + t + ")";:};
 
 
 compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt);:}
-					| while_stmt:w {:RESULT = w.toString();:}
-					| for_stmt:f {:RESULT = f.toString();:}
+					| while_stmt:w {:RESULT = w;:}
+					| for_stmt:f {:RESULT = f;:}
 					| try_stmt:t {:System.out.println("try_stmt");RESULT = t.toString();:}
 					| with_stmt {:System.out.println("with_stmt");:}
 					| funcdef:f {:System.out.println("funcdef: " + f); RESULT = f.toString();:}
@@ -633,6 +636,10 @@ if_stmt		::= IF test:t COLON suite:s else_recoursive:else_rec
 					//RESULT=tab+ "if " + t + " then " + s1 +tab+ else_rec + tab+"else " + s2.toString() + tab +"end\n";
 					RESULT="if " + t + " then " + s1 + else_rec +tab+ "else " + s2.toString();
 				:}
+				| IF test:t error suite:s1 {:pSynWarning("Error ':' expected in 'if' instruction");:}
+				| IF test:t error suite:s1 else_recoursive:else_rec {:pSynWarning("Error ':' expected in 'if' instruction");:}
+				| IF test:t error suite:s1 else_recoursive:else_rec ELSE COLON suite:s2{:pSynWarning("Error ':' expected in 'if' instruction");:}
+				| IF test:t COLON suite:s1 ELSE error suite:s2{:pSynWarning("Error ':' expected in 'else' instruction");:}
 				;
 else_recoursive		::= ELIF test:t COLON suite:s 
 						{:
@@ -642,10 +649,12 @@ else_recoursive		::= ELIF test:t COLON suite:s
 							RESULT =tab+"elseif " + t.toString() + " then " + s.toString();
 						:}
 						| else_recoursive:else_rec ELIF test:t COLON suite:s  {:
-						String tab = "";
-						for(int i=0; i<getIndentation(); i++)
-							tab+="\t";
-						RESULT =else_rec + tab+"elseif " + t.toString() + " then " + s.toString();:}
+							String tab = "";
+							for(int i=0; i<getIndentation(); i++)
+								tab+="\t";
+							RESULT =else_rec + tab+"elseif " + t.toString() + " then " + s.toString();
+						:}
+						| ELIF test:t error suite:s {:pSynWarning("Error ':' expected in 'elif' instruction");:}
 						;
 
 while_stmt	::= WHILE test:t COLON suite:s 
@@ -662,7 +671,8 @@ while_stmt	::= WHILE test:t COLON suite:s
 				| WHILE test:t COLON suite:s1 ELSE COLON suite:s2
 				{:
 					RESULT = new String[]{t.toString(),s1.toString(),s2.toString()};
-				:} 
+				:}
+				| WHILE test error suite {:pSynWarning("Error ':' expected in 'while' instruction");:}
 				;
 for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
 				{:
@@ -699,6 +709,8 @@ for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
 					else
 						RESULT = "for " + e + "=" + range[0]+","+range[1]+"-1 do " + s.toString() + " end\n";
 				:}
+				| FOR exprlist IN testlist error suite:s {:pSynWarning("Error ':' expected in 'for' instruction");:}
+				| FOR exprlist:e IN range_stmt:r error suite:s {:pSynWarning("Error ':' expected in 'for' instruction");:}
 				;
 try_stmt	::= TRY COLON suite:s1 FINALLY COLON suite:s2 {:RESULT = "try:" + s1 + "finally:"+s2;:}
 				| TRY COLON suite:s1 except_clause_recoursive:excrec {:RESULT = "try:" + s1 + excrec;:}
@@ -717,7 +729,11 @@ with_stmt				::= WITH with_item:w with_item_recoursive:wr COLON suite:s {:RESULT
 with_item_recoursive	::= COMMA with_item:w {:RESULT = ","+w;:}|with_item_recoursive:wr COMMA with_item:w {:RESULT = wr.toString()+","+w;:};
 with_item				::= test:t {:RESULT = t;:} | test:t AS expr:e {:RESULT = t + " as " + e;:};
 
-suite	::= simple_stmt:simple {:System.out.println("suite simple: " + simple.toString());RESULT = "\n"+simple.toString();:} 
+suite	::= simple_stmt:simple 
+			{:
+				System.out.println("suite simple: " + simple.toString());
+				if(simple!=null)RESULT = "\n"+simple.toString();
+			:} 
 			| NEWLINE INDENT stmt_rec:s DEDENT 
 			{:
 				//System.out.println("TOKEN: " + parser.getToken());
@@ -730,29 +746,60 @@ stmt_rec	::= stmt:s {:RESULT = s;:}
 				| stmt_rec:sr stmt:s {:RESULT = sr.toString() +s.toString();:}
 				;
 
-assign_recoursive		::= ASSIGN testlist:t {:RESULT ="="+t.toString();:} 
+assign_recoursive		::= ASSIGN testlist:t {:if(t!=null)RESULT ="="+t.toString(); else RESULT = "= nil";:} 
 							| ASSIGN testlist:t assign_recoursive:ass_rec {:RESULT ="="+t.toString()+ass_rec.toString();:}
 							; 
 test					::= comparison:c {:RESULT = c;:} | lambdef:l {:RESULT = l;:};
-comparison				::= expr:e {:RESULT = e;:} |comparison:comparison binop:binop  expr:e  {:RESULT =comparison.toString()+ binop.toString()+e.toString();:};
+comparison				::= expr:e {:RESULT = e;:} 
+							| comparison:comparison binop:binop expr:e  {:RESULT =comparison.toString()+ binop.toString()+e.toString();:}
+							;
 expr					::= atom:a {:RESULT = a;:} | atom:a trailer:t {:RESULT = a.toString() + t.toString();:};
 atom					::= NAME:n {:RESULT = n;:} | number:n {:RESULT = n;:} | STRING:s {:RESULT = s;:}
 							| unop:u  atom:a  {:RESULT = u.toString()+a.toString();:}
 							| LPAREN RPAREN {:RESULT="()";:}
-							| LBRACK RBRACK {:RESULT="{}";:}
 							| LCURLY RCURLY {:RESULT="{}";:}
 							| LPAREN yield_expr:y RPAREN {:RESULT="("+y.toString()+")";:}
 							| LPAREN testlist_comp:t RPAREN {:RESULT="("+t.toString()+")";:}
 							| LBRACK listmaker:l RBRACK 
 							{:
-								RESULT="{"+l.toString()+"}";
+								System.out.println("LISTMAKER in atom");
+								if (l!=null)
+									RESULT="{"+l.toString()+"}";
+								else
+									RESULT="{}";
 							:}
 							| LCURLY dictorsetmaker:d RCURLY {:RESULT="{"+d.toString()+"}";:}
+							| LPAREN error {:pSynWarning("Error ')' expected"); RESULT = "(";:}
+							| LCURLY error 
+							{:
+								pSynWarning("Error '}' expected");
+								RESULT="{";
+							:}
+							| LPAREN yield_expr:y error 
+							{:
+								pSynWarning("Error ')' expected after yield expression");
+								RESULT="("+y.toString();
+							:}
+							| LPAREN testlist_comp:t error 
+							{:
+								pSynWarning("Error ')' expected after testlist");
+								RESULT="("+t.toString();
+							:}
+							| LBRACK error 
+							{:
+								pSynWarning("Error ']' expected in list creation");
+								RESULT="{";
+							:}
+							| LCURLY dictorsetmaker:d error 
+							{:
+								pSynWarning("Error '}' expected in dictionary creation");
+								RESULT="{"+d.toString();
+							:}
 							;
 yield_expr				::= YIELD | YIELD testlist;
 
 /* Listmaker per la creazione di liste */
-listmaker				::= test:t list_for:l {:RESULT = t.toString()+l.toString();:} | testlist:t {:RESULT=t.toString();:};
+listmaker				::= test:t list_for:l {:RESULT = t.toString()+l.toString();:} | testlist:t {:RESULT=t.toString();:}|;
 
 /* Dictionary maker e Set maker pre creare i dizionari oppure gli insiemi. */
 dictorsetmaker			::= test:t1 COLON test:t2 {:RESULT = t1+"="+t2;:}
