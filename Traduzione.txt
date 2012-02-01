@@ -1,5 +1,23 @@
-t={
-(o,p,q,r)
-dic={"a"=1,"b"=2}
-dic2={
+function pippo(cc,b,...)
+	b=b or 1
+	local args={}
+	local topolino={}for k,v in pairs(arg) do
+	if type(k) == 'number' then
+		args[k]=v
+	else
+		topolino[k]=v
+	end
+end
+	print (cc)
+	print (b)
+	print (args)
+	print (kwargs)
+end
+for x in pairs({1,2,3,4}) do 
+	print (x)
+end
+d={c=1,d=2}
+for k in pairs(d) do 
+	print (k,d[k])
+end
 

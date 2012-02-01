@@ -194,11 +194,21 @@ file_input	::= file_input_recoursive:f
 				try {
 					if(f != null)
 					{
-						dumpln(f.toString());
-						BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
-						String outText = parser.outputBuffer.toString();
-						out.write(outText);
-						out.close();
+						if(sem())
+						{
+							dumpln(f.toString());
+							BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
+							String outText = parser.outputBuffer.toString();
+							out.write(outText);
+							out.close();
+						}
+						else
+						{
+							BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
+							out.write("");
+							out.close();
+						}
+							
 					}
 				}
 	            catch (IOException e)
@@ -446,8 +456,8 @@ varargslist				::= defparameter_recoursive:d
 							{:
 								RESULT = new String[3];
 								((String[])RESULT)[0]=d.toString();
-								((String[])RESULT)[1]=n1;
-								((String[])RESULT)[2]=n2;
+								((String[])RESULT)[1]="*"+n1;
+								((String[])RESULT)[2]="**"+n2;
 							:}
 							| MULT NAME:n 
 							{:
@@ -636,10 +646,10 @@ if_stmt		::= IF test:t COLON suite:s else_recoursive:else_rec
 					//RESULT=tab+ "if " + t + " then " + s1 +tab+ else_rec + tab+"else " + s2.toString() + tab +"end\n";
 					RESULT="if " + t + " then " + s1 + else_rec +tab+ "else " + s2.toString();
 				:}
-				| IF test:t error suite:s1 {:pSynWarning("Error ':' expected in 'if' instruction");:}
-				| IF test:t error suite:s1 else_recoursive:else_rec {:pSynWarning("Error ':' expected in 'if' instruction");:}
-				| IF test:t error suite:s1 else_recoursive:else_rec ELSE COLON suite:s2{:pSynWarning("Error ':' expected in 'if' instruction");:}
-				| IF test:t COLON suite:s1 ELSE error suite:s2{:pSynWarning("Error ':' expected in 'else' instruction");:}
+				| IF test:t error suite:s1 {:pSynWarning("Error ':' expected in 'if' instruction"); disableSem();:}
+				| IF test:t error suite:s1 else_recoursive:else_rec {:pSynWarning("Error ':' expected in 'if' instruction"); disableSem();:}
+				| IF test:t error suite:s1 else_recoursive:else_rec ELSE COLON suite:s2{:pSynWarning("Error ':' expected in 'if' instruction"); disableSem();:}
+				| IF test:t COLON suite:s1 ELSE error suite:s2{:pSynWarning("Error ':' expected in 'else' instruction"); disableSem();:}
 				;
 else_recoursive		::= ELIF test:t COLON suite:s 
 						{:
@@ -654,7 +664,7 @@ else_recoursive		::= ELIF test:t COLON suite:s
 								tab+="\t";
 							RESULT =else_rec + tab+"elseif " + t.toString() + " then " + s.toString();
 						:}
-						| ELIF test:t error suite:s {:pSynWarning("Error ':' expected in 'elif' instruction");:}
+						| ELIF test:t error suite:s {:pSynWarning("Error ':' expected in 'elif' instruction"); disableSem();:}
 						;
 
 while_stmt	::= WHILE test:t COLON suite:s 
@@ -672,13 +682,13 @@ while_stmt	::= WHILE test:t COLON suite:s
 				{:
 					RESULT = new String[]{t.toString(),s1.toString(),s2.toString()};
 				:}
-				| WHILE test error suite {:pSynWarning("Error ':' expected in 'while' instruction");:}
+				| WHILE test error suite {:pSynWarning("Error ':' expected in 'while' instruction"); disableSem();:}
 				;
 for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
 				{:
 					//se traduciamo letteralmente lua non considera la lista di elementi, quindi dobbiamo inserire il pairs
-					String suiteMod = s.toString().replace(t + "["+e+"]", "value_dic");
-					StringBuilder sb = new StringBuilder();
+					//String suiteMod = s.toString().replace(t + "["+e+"]", "value_dic");
+					/*StringBuilder sb = new StringBuilder();
 					sb.append("if unpack(");
 					sb.append(t);
 					sb.append(")==nil then\n");
@@ -696,9 +706,9 @@ for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
 					sb.append(t);
 					sb.append(") do ");
 					sb.append(s);
-					sb.append(" end\n");
-					//RESULT = "for " + "key_" + e +","+ e + " in pairs("+t+") do "+s;
-					RESULT = sb.toString(); 
+					sb.append(" end\n");*/
+					RESULT = "for " +  e + " in pairs("+t+") do "+s;
+					//RESULT = sb.toString(); 
 				:} 
 				| FOR exprlist IN testlist COLON suite ELSE COLON suite
 				| FOR exprlist:e IN range_stmt:r COLON suite:s 
@@ -709,8 +719,8 @@ for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
 					else
 						RESULT = "for " + e + "=" + range[0]+","+range[1]+"-1 do " + s.toString() + " end\n";
 				:}
-				| FOR exprlist IN testlist error suite:s {:pSynWarning("Error ':' expected in 'for' instruction");:}
-				| FOR exprlist:e IN range_stmt:r error suite:s {:pSynWarning("Error ':' expected in 'for' instruction");:}
+				| FOR exprlist IN testlist error suite:s {:pSynWarning("Error ':' expected in 'for' instruction"); disableSem();:}
+				| FOR exprlist:e IN range_stmt:r error suite:s {:pSynWarning("Error ':' expected in 'for' instruction"); disableSem();:}
 				;
 try_stmt	::= TRY COLON suite:s1 FINALLY COLON suite:s2 {:RESULT = "try:" + s1 + "finally:"+s2;:}
 				| TRY COLON suite:s1 except_clause_recoursive:excrec {:RESULT = "try:" + s1 + excrec;:}
@@ -760,6 +770,13 @@ atom					::= NAME:n {:RESULT = n;:} | number:n {:RESULT = n;:} | STRING:s {:RESU
 							| LCURLY RCURLY {:RESULT="{}";:}
 							| LPAREN yield_expr:y RPAREN {:RESULT="("+y.toString()+")";:}
 							| LPAREN testlist_comp:t RPAREN {:RESULT="("+t.toString()+")";:}
+							| LBRACK testlist:t RBRACK 
+							{:
+								if (t!=null)
+									RESULT="{"+t.toString()+"}";
+								else
+									RESULT="{}";
+							:}
 							| LBRACK listmaker:l RBRACK 
 							{:
 								System.out.println("LISTMAKER in atom");
@@ -769,37 +786,42 @@ atom					::= NAME:n {:RESULT = n;:} | number:n {:RESULT = n;:} | STRING:s {:RESU
 									RESULT="{}";
 							:}
 							| LCURLY dictorsetmaker:d RCURLY {:RESULT="{"+d.toString()+"}";:}
-							| LPAREN error {:pSynWarning("Error ')' expected"); RESULT = "(";:}
+							| LPAREN error {:pSynWarning("Error invalid syntax"); disableSem(); RESULT = "(";:}
 							| LCURLY error 
 							{:
-								pSynWarning("Error '}' expected");
+								pSynWarning("Error invalid syntax");
+								disableSem();
 								RESULT="{";
 							:}
 							| LPAREN yield_expr:y error 
 							{:
 								pSynWarning("Error ')' expected after yield expression");
+								disableSem();
 								RESULT="("+y.toString();
 							:}
 							| LPAREN testlist_comp:t error 
 							{:
 								pSynWarning("Error ')' expected after testlist");
+								disableSem();
 								RESULT="("+t.toString();
 							:}
 							| LBRACK error 
 							{:
-								pSynWarning("Error ']' expected in list creation");
+								pSynWarning("Error invalid syntax");
+								disableSem();
 								RESULT="{";
 							:}
 							| LCURLY dictorsetmaker:d error 
 							{:
 								pSynWarning("Error '}' expected in dictionary creation");
+								disableSem();
 								RESULT="{"+d.toString();
 							:}
 							;
 yield_expr				::= YIELD | YIELD testlist;
 
 /* Listmaker per la creazione di liste */
-listmaker				::= test:t list_for:l {:RESULT = t.toString()+l.toString();:} | testlist:t {:RESULT=t.toString();:}|;
+listmaker				::= test:t list_for:l {:RESULT = t.toString()+l.toString();:} |;
 
 /* Dictionary maker e Set maker pre creare i dizionari oppure gli insiemi. */
 dictorsetmaker			::= test:t1 COLON test:t2 {:RESULT = t1+"="+t2;:}
@@ -815,7 +837,7 @@ exprlist				::= expr:e {:RESULT = e;:}
 							;
 
 /* Le lambda form hanno la stessa posizione sintattica delle espressioni e servono per creare funzioni anonime. */
-lambdef					::= LAMBDA COLON test:t {:RESULT="lambda:"+t;:} | LAMBDA varargslist:v COLON test:t {:RESULT="lambda "+v.toString()+":"+t.toString();:};
+lambdef					::= LAMBDA COLON test:t {:RESULT="function() return "+t+" end";:} | LAMBDA varargslist:v COLON test:t {:RESULT="lambda "+v.toString()+":"+t.toString();:};
 
 trailer					::= LPAREN RPAREN {:RESULT = "()";:}
 							| LPAREN arglist:a RPAREN {:RESULT = "("+a.toString()+")";:}
@@ -862,9 +884,10 @@ argument				::= test:t {:RESULT = t.toString();:}
 							| test:t1 ASSIGN:assign test:t2 {:RESULT = t1.toString()+assign.toString()+t2.toString();:};
 
 list_iter				::= list_for:l {:RESULT=l.toString();:} | list_if:l {:RESULT=l.toString();:};
-list_for				::= FOR exprlist:e IN testlist:t {:RESULT = "for "+e.toString()+" in "+t.toString();:} 
-							| FOR exprlist:e IN testlist:t list_iter:l {:RESULT = "for "+e.toString()+" in "+t.toString()+l.toString();:}
-							;
+list_for		::= FOR exprlist:e IN testlist:t {:RESULT = "for "+e.toString()+" in "+t.toString();:} 
+					| FOR exprlist:e IN testlist:t list_iter:l {:RESULT = "for "+e.toString()+" in "+t.toString()+l.toString();:}
+					| FOR exprlist:e IN range_stmt:r list_iter:l {::}
+					;
 list_if					::= IF test:t {:RESULT="if "+t.toString();:} | IF test:t list_iter:l {:RESULT = "if "+t.toString()+l.toString();:};
 
 comp_iter				::= comp_for:l {:RESULT=l.toString();:} | comp_if:l {:RESULT=l.toString();:};
