@@ -32,25 +32,25 @@ public class Program
 		
 		
 		
-//		System.out.println("-----------------------------------\n");
-//		System.out.println("Starting verify translation");
-//		System.out.println("\n-----------------------------------");
-//		System.out.println("-----------------------------------");
-//		
-//		LuaGrammarLex luaLexer;
-//		try {
-//			luaLexer = new LuaGrammarLex(new FileReader("Prova.lua"));
-//			LuaGrammarCup luaParser = new LuaGrammarCup(luaLexer);
-//			luaParser.parse();
-//			System.out.println("All rigth: translated successfully");
-//		} catch (FileNotFoundException e1) {
-//			System.out.println("File not found");
-//			e1.printStackTrace();
-//		}
-//		catch(Exception e)
-//		{
-//			System.out.println("Eccezione");
-//			e.printStackTrace();
-//		}
+		System.out.println("-----------------------------------\n");
+		System.out.println("Starting verify translation");
+		System.out.println("\n-----------------------------------");
+		System.out.println("-----------------------------------");
+		
+		LuaGrammarLex luaLexer;
+		try {
+			luaLexer = new LuaGrammarLex(new FileReader("Traduzione.txt"));
+			LuaGrammarCup luaParser = new LuaGrammarCup(luaLexer);
+			luaParser.parse();
+			System.out.println("All rigth: translated successfully");
+		} catch (FileNotFoundException e1) {
+			System.out.println("File not found");
+			e1.printStackTrace();
+		}
+		catch(Exception e)
+		{
+			System.out.println("Eccezione");
+			e.printStackTrace();
+		}
 	}
 }
