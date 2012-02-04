@@ -759,7 +759,9 @@ stmt_rec	::= stmt:s {:RESULT = s;:}
 assign_recoursive		::= ASSIGN testlist:t {:if(t!=null)RESULT ="="+t.toString(); else RESULT = "= nil";:} 
 							| ASSIGN testlist:t assign_recoursive:ass_rec {:RESULT ="="+t.toString()+ass_rec.toString();:}
 							; 
-test					::= comparison:c {:RESULT = c;:} | lambdef:l {:RESULT = l;:};
+test					::= comparison:c {:RESULT = c;:} 
+							//| lambdef:l {:RESULT = l;:}
+							;
 comparison				::= expr:e {:RESULT = e;:} 
 							| comparison:comparison binop:binop expr:e  {:RESULT =comparison.toString()+ binop.toString()+e.toString();:}
 							;
