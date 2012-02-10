@@ -12,6 +12,20 @@ import luaGrammar.*;
 import pyGrammar.*;
 public class Program
 {
+	public enum AttrType 
+	{
+		COMMENT,
+		NUMBER,
+		ID,
+		STRING,
+		TUPLE,
+		LIST,
+		DICT,
+		ASSIGN,
+		OPERATION,
+		LAMBDA
+	};
+	
 	public static void main(String args[])
 	{
 		System.out.println("source-to-source compiler.");
