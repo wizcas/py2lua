@@ -1,0 +1,920 @@
+
+package pyGrammar;
+
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.*;
+
+init with {:
+    // String buffer used to store output program
+    outputBuffer = new StringBuffer();
+    tabCounter = 0;
+:};
+
+parser code
+{:
+    // It can be "stdout" to write output program to standard
+    // output or "file" to dump program in a file.
+    public static String dumpOutput;
+
+    // It's true if the semantic check is enabled
+    public boolean enableSem = true;
+    
+    // String buffer used to store output program
+    public StringBuffer outputBuffer;
+    
+     // counter used to count indentation level
+    public static int tabCounter;
+
+    // Redefinition of error functions
+    public void report_error(String message, Object info) {
+        System.err.print("ERROR: Syntax error");
+        if (info instanceof Symbol)
+            if (((Symbol)info).left != -1){
+                int line = (((Symbol)info).left)+1;
+                int column = (((Symbol)info).right)+1;
+                System.err.print(" (linea "+line+", colonna "+column+"): ");
+            } else System.err.print(": ");
+        else System.err.print(": ");
+    }
+    public void syntax_error(Symbol cur_token){}
+
+    // Return actual symbol
+    public Symbol getToken() {
+        return ((Symbol)stack.elementAt(tos));
+    }
+
+    // Return semantic value of symbol in position (position)
+    public Object stack(int position) {
+        return (((Symbol)stack.elementAt(tos+position)).value);
+    }
+
+    // Return the line number of actual symbol
+    public int getLine() {
+        if (((Symbol)stack.elementAt(tos)).left != -1){
+            return ((Symbol)stack.elementAt(tos)).left+1;
+        }else return -1;
+    }
+    // Return the column number of actual symbol
+    public int getColumn() {
+        if (((Symbol)stack.elementAt(tos)).left != -1){
+            return ((Symbol)stack.elementAt(tos)).right+1;
+        }else return -1;
+    }
+:}
+
+action code
+{:
+	// Disable semantic check
+    private void disableSem(){
+        parser.enableSem = false;
+    }
+    // Return true if semantic is enabled, false otherwise
+    private boolean sem(){
+        return parser.enableSem;
+    }
+	// Error management
+    private void pSemError(String message){
+        System.err.println("SEM ERROR: line: "+parser.getLine()+" col: "+parser.getColumn()+": "+message);
+
+        parser.done_parsing();
+    }
+    private void pSemWarning(String message){
+        System.err.println("SEM WARNING: line: "+parser.getLine()+" col: "+parser.getColumn()+": "+message);
+    }
+    private void pSynError(String message){
+        System.err.println("SYN ERROR: line: "+parser.getLine()+" col: "+parser.getColumn()+": "+message);
+        parser.done_parsing();
+    }
+    private void pSynWarning(String message){
+        System.err.println("SYN WARNING: line: "+parser.getLine()+" col: "+parser.getColumn()+": "+message);
+        /* Quando c'e' un errore sintattico continuo il parsing ma disabilito la semantica */
+        //disableSem();
+    }
+        
+    // Write a string in output
+    private void dump(String s){
+        parser.outputBuffer.append(s);
+    }
+    private void dumpln(String s){
+        parser.outputBuffer.append(s+"\n");
+    }
+    
+    private int getIndentation()
+    {
+    	return ((PythonLex)parser.getScanner()).stackLength()-1;
+    }
+    
+    private String transformDefaultParams(StringBuilder sb, String param)
+    {
+    	StringBuilder suiteAdding=new StringBuilder();
+    	String[] splittedParams = param.split(",");
+		String[] varname;
+		for(int i = 0; i<splittedParams.length; i++)
+		{
+			System.err.println("for splittedParams: " + splittedParams[i]);
+			varname = splittedParams[i].split("="); 
+			sb.append(varname[0]);
+			if(i != splittedParams.length-1)
+				sb.append(",");
+			if(varname.length>1)
+			{
+				suiteAdding.append("\n\t");
+				suiteAdding.append(varname[0]);
+				suiteAdding.append("=");
+				suiteAdding.append(varname[0]);
+				suiteAdding.append(" or ");
+				suiteAdding.append(varname[1]);
+			}
+		}
+		return suiteAdding.toString();
+    }
+
+:}
+
+terminal        AND, AS, ASSERT, BREAK, CLASS, CONTINUE;
+terminal        DEF, DEL, ELIF, ELSE, EXCEPT, EXEC, COMMENT;
+terminal        FINALLY, FOR, FROM, GLOBAL, IF, IMPORT;
+terminal        IN, IS, LAMBDA, NOT, OR, PASS,YIELD, TRIDOT, DIVDIV,NEWLINE, MULTMULT, INDENT, DEDENT;
+terminal        PRINT, RAISE, RETURN, TRY, WHILE, WITH, RANGE;
+terminal		PLUS, MINUS, MULT, DIVIDE, MOD, EXPON, DOT, MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ;
+terminal		COMMA,SEMI,ASSIGN,COLON,LBRACK,RBRACK,LCURLY,RCURLY,LPAREN,RPAREN,TILDE,ECOM,PIPE,LSHIFT,RSHIFT;
+terminal		AT,PLUSEQ,MINUSEQ,MULTEQ,DIVEQ,MODEQ,ANDEQ,OREQ,EXPEQ,RSEQ,LSEQ;
+terminal		DECIMAL, LONGINT, HEX, OCT, BIN,FLOAT,IMAGNUM;
+terminal String NAME, STRING;
+
+non terminal	file_input, file_input_recoursive, stmt,simple_stmt, expr_stmt, print_stmt,del_stmt,flow_stmt,import_stmt, assert_stmt,global_stmt,exec_stmt;
+non terminal	number, binop, unop, comparison, lambdef, expr, atom, test, trailer, yield_expr, testlist_comp, listmaker, dictorsetmaker, testlist, exprlist;
+non terminal	list_iter, list_for, list_if, varargslist, defparameter_recoursive, defparameter, fpdef, fplist, name_recoursive, range_stmt;
+non terminal	augassign, assign_recoursive, return_stmt,raise_stmt, dotted_name, dotted_as_name, dotted_as_names, import_as_name, import_as_names, dot_rec;
+non terminal	arglist, subscriptlist, subscript,subscript_rec,sliceop,argument,argument_rec,comp_for,comp_iter,comp_if, compound_stmt;
+non terminal	if_stmt, while_stmt, for_stmt, try_stmt, with_stmt, funcdef, classdef, decorated, suite, stmt_rec, small_stmt, small_stmt_rec, comment;
+non terminal	else_recoursive,except_clause, except_clause_recoursive, with_item, with_item_recoursive, decorator, decorators, parameters;
+
+
+/*Precedenza operatori: 
+	lambda	Lambda expression
+	if – else	Conditional expression
+	or	Boolean OR
+	and	Boolean AND
+	not x	Boolean NOT
+	in, not in, is, is not, <, <=, >, >=, <>, !=, ==	Comparisons, including membership tests and identity tests,
+	|	Bitwise OR
+	^	Bitwise XOR
+	&	Bitwise AND
+	<<, >>	Shifts
+	+, -	Addition and subtraction
+	*, /, //, %	Multiplication, division, remainder [8]
+	+x, -x, ~x	Positive, negative, bitwise NOT
+	**	Exponentiation
+*/
+precedence left LAMBDA;
+precedence left OR;
+precedence left AND;
+precedence left NOT;
+precedence left MINOR, MINEQ, MAIOR, MAIEQ, EQ, NEQ, IN, IS;
+precedence left PIPE;
+precedence left EXPON;
+precedence left ECOM;
+precedence left LSHIFT, RSHIFT;
+precedence left PLUS, MINUS;
+precedence left MULT, DIVIDE, MOD;
+precedence left TILDE;
+precedence right MULTMULT;
+
+/* Start symbols for the grammar:
+*       single_input is a single interactive statement;
+*       file_input is a module or sequence of commands read from an input file;
+*       eval_input is the input for the eval() and input() functions.
+* NB: compound_stmt in single_input is followed by extra NEWLINE!
+*/
+
+file_input	::= file_input_recoursive:f 
+			{:
+				try {
+					if(f != null)
+					{
+						if(sem())
+						{
+							dumpln(f.toString());
+							BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
+							String outText = parser.outputBuffer.toString();
+							out.write(outText);
+							out.close();
+						}
+						else
+						{
+							BufferedWriter out = new BufferedWriter(new FileWriter(parser.dumpOutput));
+							out.write("");
+							out.close();
+						}
+							
+					}
+				}
+	            catch (IOException e)
+	            {
+	            	e.printStackTrace();
+	            }
+			:};
+file_input_recoursive		::= NEWLINE file_input_recoursive:f {:RESULT = "\n"+f;:}
+								| stmt:s file_input_recoursive:f 
+								{:
+									if(s==null && f!=null)
+										RESULT= f.toString();
+									else if (s!=null && f == null)
+										RESULT = s.toString();
+									else if (s!=null && f != null)
+										RESULT = s.toString() + f.toString();
+								:}
+								| {:RESULT = "";:}
+								;
+
+decorator		::= AT dotted_name NEWLINE
+					| AT dotted_name LPAREN RPAREN NEWLINE
+					| AT dotted_name LPAREN arglist RPAREN NEWLINE
+					;
+decorators		::= decorator | decorators decorator ;
+decorated		::= decorators classdef | decorators funcdef;
+funcdef		::= DEF NAME:n parameters:p COLON suite:s 
+			{:
+				StringBuilder sb = new StringBuilder();
+				sb.append("function ");
+				sb.append(n);
+				String suite = s.toString();
+				if(p == null)
+				{
+					sb.append("()");
+					sb.append(suite);
+				}
+				else
+				{
+					String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+					sb.append("(");
+					String[] params = (String[])p;
+					String argsName=null;
+					String kargsName=null;
+					if(params.length == 1)
+					{
+						if (params[0].startsWith("*"))
+						{
+							sb.append("...");
+							sb.append(")");
+							if(params[0].contains("**")) //abbiamo **kargs
+							{
+								argsName = params[0].substring(2);
+								sb.append("\n\t");
+								sb.append(tab);
+								sb.append("\tlocal ");
+								sb.append(argsName);
+								sb.append("={}\n\t");
+								sb.append(tab);
+								sb.append("for k,v in pairs(arg[1]) do\n\t\t");
+								sb.append(tab);
+								sb.append(argsName);
+								sb.append("[k]=v\n\t");
+								sb.append(tab);
+								sb.append("end");
+							}
+							else
+							{
+								argsName = params[0].substring(1); //abbiamo *args
+								sb.append("\n\t");
+								sb.append(tab);
+								sb.append("local ");
+								sb.append(argsName);
+								sb.append("={}\n\t");
+								sb.append(tab);
+								sb.append("for i=1,#arg do\n\t\t");
+								sb.append(tab);
+								sb.append(argsName);
+								sb.append("[i]=arg[i]\n\t");
+								sb.append(tab);
+								sb.append("end");
+							}
+						}
+						else{
+							
+							if(params[0].contains("="))
+							{
+								String suiteAdding = transformDefaultParams(sb,params[0]);
+								sb.append(")");
+								sb.append(suiteAdding);
+							}
+							else
+							{
+								sb.append(params[0]);
+								sb.append(")");
+							}
+						}
+					}
+					else if(params.length == 2)
+					{
+						if(!params[0].contains("*"))
+						{
+							String suiteAdding = "";
+							if(params[0].contains("="))
+								suiteAdding = transformDefaultParams(sb,params[0]);
+							else
+								sb.append(params[0]);
+							sb.append(",");
+							sb.append("...");
+							sb.append(")");
+							sb.append(suiteAdding);
+							if(params[1].startsWith("**")) //abbiamo **kargs
+							{
+								argsName = params[1].substring(2);
+								sb.append("\n\t");
+								sb.append(tab);
+								sb.append("local ");
+								sb.append(argsName);
+								sb.append("={}\n\t");
+								sb.append(tab);
+								sb.append("for k,v in pairs(arg[1]) do\n\t\t");
+								sb.append(tab);
+								sb.append(argsName);
+								sb.append("[k]=v\n\t");
+								sb.append(tab);
+								sb.append("end");
+							}
+							else
+							{
+								argsName = params[1].substring(1); //abbiamo *args
+								sb.append("\n\t");
+								sb.append(tab);
+								sb.append("local ");
+								sb.append(argsName);
+								sb.append("={}\n\t");
+								sb.append(tab);
+								sb.append("for i=1,#arg do\n\t\t");
+								sb.append(tab);
+								sb.append(argsName);
+								sb.append("[i]=arg[i]\n\t");
+								sb.append(tab);
+								sb.append("end");
+							}
+						}
+						else //caso parametri function(*args, **kargs)
+						{
+							System.out.println("caso parametri con *");
+							sb.append("...");
+							sb.append(")");
+							argsName = params[0].substring(1);
+							kargsName = params[1].substring(2);
+							sb.append("\n\t");
+							sb.append(tab);
+							sb.append("local ");
+							sb.append(argsName);
+							sb.append("={}");
+							sb.append("\n\t");
+							sb.append(tab);
+							sb.append("local ");
+							sb.append(kargsName);
+							sb.append("={}");
+							sb.append("\n\t");
+							sb.append(tab);
+							sb.append("for k,v in pairs(arg) do\n\t\tif type(k) == 'number' then\n\t\t\t");
+							sb.append(tab);
+							sb.append(argsName);
+							sb.append("[k]=v\n\t\telse\n\t\t\t");
+							sb.append(tab);
+							sb.append(kargsName);
+							sb.append("[k]=v\n\t\t");
+							sb.append(tab);
+							sb.append("end\n\t");
+							sb.append(tab);
+							sb.append("end");
+						}
+						
+					}
+					else //params sono tre quindi ci sono quelli normali ed entrambi *args e **kargs
+					{
+						String suiteAdding = "";
+						if(params[0].contains("="))
+							suiteAdding = transformDefaultParams(sb,params[0]);
+						else
+							sb.append(params[0]);
+						sb.append(",");
+						sb.append("...");
+						sb.append(")");
+						sb.append(suiteAdding);
+						argsName = params[1].substring(1);
+						kargsName = params[2].substring(2);
+						//creaimo nella funzione lua due variabili locali fittizie, con i nomi degli argomenti, così
+						//da non modificare il resto della suite, visto che vengono usate come un dizionario nel caso
+						//di ** e come lista nel caso di *
+						sb.append("\n\tlocal ");
+						sb.append(argsName);
+						sb.append("={}");
+						sb.append("\n\tlocal ");
+						sb.append(kargsName);
+						sb.append("={}");
+						//riempiamo tramite arg ciascuna di esser, discernendo se vi sono elementi chiave=valore oppure solo valore
+						//for k,v in pairs(arg) do 
+						//	if type(k)== 'int' then argsName.append(v)
+						//	else kargsName[k]=v
+						sb.append("for k,v in pairs(arg) do\n\tif type(k) == 'number' then\n\t\t");
+						sb.append(argsName);
+						sb.append("[k]=v\n\telse\n\t\t");
+						sb.append(kargsName);
+						sb.append("[k]=v\n\tend\nend");
+					}					
+					sb.append(suite);
+				}
+				RESULT = sb.toString();
+			:};
+parameters		::= LPAREN RPAREN {::} 
+					| LPAREN varargslist:v RPAREN 
+					{:
+						String[] var = (String[])v;
+						//if(var[0].contains("="))
+							//var[0] = "--[[Found parameter assign not supported in LUA\n"+var[0]+"]]";
+						RESULT = var;
+						
+					:}
+					;
+
+varargslist				::= defparameter_recoursive:d 
+							{:
+								RESULT = new String[1];
+								((String[])RESULT)[0]= d.toString(); 
+							:}
+							| defparameter_recoursive:d COMMA MULT NAME:n 
+							{:
+								RESULT = new String[2];
+								((String[])RESULT)[0]=d.toString();
+								((String[])RESULT)[1]="*"+n; 
+							:}
+							| defparameter_recoursive:d COMMA MULTMULT NAME:n 
+							{:
+								RESULT = new String[2];
+								((String[])RESULT)[0]=d.toString();
+								((String[])RESULT)[1]="**"+n;
+							:}
+							| defparameter_recoursive:d COMMA MULT NAME:n1 COMMA MULTMULT NAME:n2
+							{:
+								RESULT = new String[3];
+								((String[])RESULT)[0]=d.toString();
+								((String[])RESULT)[1]="*"+n1;
+								((String[])RESULT)[2]="**"+n2;
+							:}
+							| MULT NAME:n 
+							{:
+								RESULT = new String[1];
+								((String[])RESULT)[0]="*"+n; 
+							:}
+							| MULT NAME:n1 COMMA MULTMULT NAME:n2 
+							{:
+								RESULT = new String[2];
+								((String[])RESULT)[0]="*"+n1;
+								((String[])RESULT)[1]="**"+n2;
+							:}
+							| MULTMULT NAME:n 
+							{:
+								RESULT = new String[1];
+								((String[])RESULT)[0]="**"+n; 
+							:}
+							;
+defparameter_recoursive	::= defparameter:d {:RESULT=d;:}
+							| defparameter_recoursive:dr COMMA defparameter:d   {:RESULT = dr+","+d;:} 
+							;
+defparameter			::= fpdef:f {:RESULT = f;:} | fpdef:f ASSIGN test:t {:pSemWarning("Found parameter assign not supported in LUA"); RESULT=f+"="+t;:};
+fpdef					::= NAME:n {:RESULT = n;:} | LPAREN fplist:f RPAREN {:RESULT="("+f+")";:};
+fplist			::= fpdef:f {:RESULT = f;:} 
+					| fplist:fl COMMA fpdef:f  {:RESULT = fl+","+f;:}
+					;
+
+stmt			::= simple_stmt:s {:RESULT = s;:} 
+					| compound_stmt:compound 
+					{:
+						String tab = "";
+						for(int i=0; i<getIndentation(); i++)
+							tab+="\t";
+						System.out.println("Compound indentation: " + getIndentation());	
+						RESULT =tab+ compound+tab+"end\n";
+					:}
+					;
+
+simple_stmt		::= small_stmt:s NEWLINE {:RESULT = s.toString()+"\n";:} 
+					| small_stmt:s SEMI NEWLINE {:RESULT = s.toString()+";\n";:}
+					| small_stmt:s small_stmt_rec:srec NEWLINE {:RESULT = s.toString()+ srec.toString() + "\n";:}
+					| small_stmt:s small_stmt_rec:srec SEMI NEWLINE {:RESULT = s.toString()+ srec.toString() + ";\n";:}
+					;
+small_stmt_rec	::= SEMI small_stmt:s {:RESULT = ";"+s.toString();:} 
+					| small_stmt_rec:srec SEMI small_stmt:s {:RESULT = srec.toString()+";"+s.toString();:}
+					;
+small_stmt		::= expr_stmt:e 
+					{:
+						String tab = "";
+						for(int i=0; i<getIndentation(); i++)
+							tab+="\t";
+						if(e!=null)
+							RESULT =tab+e.toString();
+						else
+							RESULT = tab + " nil";
+					:}
+					| print_stmt:p 
+					{:
+						String tab = "";
+						for(int i=0; i<getIndentation(); i++)
+							tab+="\t";
+						RESULT = tab+p.toString();
+					:}
+					| range_stmt:r {:RESULT = r.toString();:}
+					| del_stmt:d {:RESULT="--[[Del not supported in LUA\n"+d+"]]";pSemWarning("Found del_stmt not supported in LUA");:}
+					| PASS:p {:RESULT=p; System.out.println("Found PASS_stmt");:}
+					| flow_stmt:f 
+					{:
+						String tab = "";
+						for(int i=0; i<getIndentation(); i++)
+							tab+="\t";
+						RESULT = tab+f;
+					:}
+					| import_stmt:i 
+					{:
+						pSemWarning("Found import_stmt not supported in LUA");
+						RESULT = "--[[Import not supported in LUA\n"+i+"]]";
+					:}
+         			| assert_stmt:a {:System.out.println("Found assert_stmt"); RESULT = a;:}
+         			| global_stmt:g 
+         			{:
+         				pSemWarning("Found global_stmt not supported in LUA");
+         				RESULT = "--[[Global not supported in LUA\n"+g+"]]";
+         			:}
+         			| exec_stmt {:System.out.println("Found exec_stmt");:}
+         			| comment:c {:RESULT = c;:}
+	                ;
+expr_stmt	::= testlist:t {:RESULT=t;:}
+				| testlist:t1 augassign:a testlist:t2 
+				{:
+					//poiche' lua non supporta le assegnazioni +=, *=, /=, -=, **=, ^= si deve modificare la regola
+					String split[] = a.toString().split("=");
+					RESULT = t1.toString() + "=" +t1.toString()+split[0]+ t2.toString();
+				:}
+				| testlist:t assign_recoursive:a {:RESULT=t.toString()+a.toString();:}
+				;
+augassign		::= PLUSEQ:op {:RESULT=op;:}| MINUSEQ:op {:RESULT=op;:} | MULTEQ:op {:RESULT=op;:} 
+					| DIVEQ:op {:RESULT=op;:} | MODEQ:op {:RESULT=op;:} | ANDEQ:op {:RESULT=op;:} 
+					| OREQ:op {:RESULT=op;:} | EXPEQ {:RESULT="^=";:} | RSEQ:op {:RESULT=op;:} | LSEQ:op {:RESULT=op;:}
+					;
+print_stmt				::= PRINT {:RESULT = "print ";:} | PRINT testlist:t {:RESULT = "print (" + t.toString()+")";:}
+							| PRINT RSHIFT testlist:t {:RESULT = "print >>" + t.toString();:}
+							| PRINT testlist:t COMMA {:RESULT = "print (" + t.toString()+")";:}
+							;
+range_stmt				::= RANGE LPAREN expr:e1 COMMA expr:e2 COMMA expr:e3 RPAREN {:RESULT = new String[]{e1.toString(),e2.toString(),e3.toString()};:}
+							| RANGE LPAREN expr:e1 COMMA expr:e2 RPAREN {:RESULT = new String[]{e1.toString(),e2.toString()};:}
+							;
+del_stmt				::= DEL exprlist:explist {:RESULT = "del " + explist;:};
+flow_stmt				::= BREAK {:RESULT = "break ";:}
+							| CONTINUE {:pSemWarning("LUA doesn't support continue statement");RESULT = "--[[LUA doesn't support continue statement\ncontinue]]";:}
+							| return_stmt:r {:RESULT = r;:}
+							| raise_stmt:r {:pSemWarning("Found raise statement, not supported in LUA"); RESULT = "--[[LUA doesn't support raise statement\n"+r+"]]";:}
+							| yield_expr:y {:RESULT = y;:}
+							;
+return_stmt				::= RETURN testlist:t {:RESULT = "return " + t;:};
+raise_stmt				::= RAISE test:t {:RESULT = "raise " + t;:}
+							| RAISE test:t1 COMMA test:t2 {:RESULT = "raise " + t1 + ","+t2;:}
+							| RAISE test:t1 COMMA test:t2 COMMA test:t3 {:RESULT = "raise " + t1 + ","+t2+","+t3;:}
+							;
+import_stmt				::= IMPORT dotted_as_names:d {:RESULT = "import " + d;:}
+							| FROM dotted_name:d IMPORT MULT {:RESULT = "from " + d + " import*";:}
+							| FROM dotted_name:d IMPORT LPAREN import_as_names:i RPAREN {:RESULT = "from " + d+" import("+i+")";:}
+							| FROM dotted_name:d IMPORT import_as_names:i {:RESULT = "from " + d+" import "+i;:}
+							| FROM dot_rec:d dotted_name:n IMPORT MULT {:RESULT = "from " + d+n+" import*";:}
+							| FROM dot_rec:d dotted_name:n IMPORT LPAREN import_as_names:i RPAREN {:RESULT = "from " + d+n+" import("+i+")";:}
+							| FROM dot_rec:d dotted_name:n IMPORT import_as_names:i {:RESULT = "from " + d+n+" import "+i;:}
+							| FROM DOT dot_rec:d IMPORT MULT {:RESULT = "from." + d+" import*";:}
+							| FROM DOT dot_rec:d IMPORT LPAREN import_as_names:i RPAREN {:RESULT = "from." + d+" import("+i.toString()+")";:}
+							| FROM DOT dot_rec:d IMPORT import_as_names:i {:RESULT = "from." + d+" import "+i;:}
+							;
+dotted_as_names			::= dotted_as_name:d {:RESULT=d;:} | dotted_as_names:ds COMMA dotted_as_name:d   {:RESULT=ds+","+d;:};
+dotted_as_name			::= dotted_name:d {:RESULT=d;:} | dotted_name:d AS NAME:n {:RESULT = d+"as"+n;:};
+dotted_name				::= NAME:n {:RESULT=n;:} | NAME:n DOT dotted_name:d {:RESULT=n+"."+d;:};
+import_as_names			::= import_as_name:i {:RESULT= i;:} | import_as_name:i COMMA import_as_names:is {:RESULT=i+","+is;:};
+import_as_name			::= NAME:n {:RESULT=n;:} | NAME:n1 AS NAME:n2 {:RESULT=n1+"as"+n2;:};
+dot_rec					::= DOT {:RESULT=".";:} |  DOT dot_rec:d {:RESULT="."+d;:};
+global_stmt				::= GLOBAL name_recoursive:n {:RESULT="global "+n.toString();:};
+name_recoursive			::= NAME:n {:RESULT=n;:} | name_recoursive:nr COMMA NAME:n {:RESULT=nr+","+n;:};
+exec_stmt				::= EXEC expr:e {:RESULT = "exec " + e;:}| EXEC expr IN test | EXEC expr IN test COMMA test;
+assert_stmt				::= ASSERT testlist:t {:RESULT = "assert (" + t + ")";:};
+
+
+
+compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt);:}
+					| while_stmt:w {:RESULT = w;:}
+					| for_stmt:f {:RESULT = f;:}
+					| try_stmt:t {:System.out.println("try_stmt");RESULT = t.toString();:}
+					| with_stmt {:System.out.println("with_stmt");:}
+					| funcdef:f {:System.out.println("funcdef: " + f); RESULT = f.toString();:}
+					| classdef {:System.out.println("classdef");:}
+					| decorated {:System.out.println("decorated");:}
+					;
+if_stmt		::= IF test:t COLON suite:s else_recoursive:else_rec 
+				{:
+					/*String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+						System.out.println(getIndentation());
+					RESULT =tab+ "if " + t.toString() + " then " + s.toString() +tab+ else_rec + tab+"end\n";*/
+					RESULT ="if " + t.toString() + " then " + s.toString() + else_rec;
+				:}
+				| IF test:t COLON suite:s 
+				{:
+					/*String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+						System.out.println(getIndentation());
+					RESULT=tab+ "if " + t + " then " + s + tab+"end";*/
+					RESULT = "if " + t + " then " + s;
+				:}
+				| IF test:t COLON suite:s1 ELSE COLON suite:s2 
+				{:
+					String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+						System.out.println(getIndentation());
+					//RESULT=tab+ "if " + t + " then " + s1 + tab+"else " + s2.toString() + tab+"end\n";
+					RESULT="if " + t + " then " + s1 + tab+"else " + s2.toString();
+				:}
+				| IF test:t COLON suite:s1 else_recoursive:else_rec ELSE COLON suite:s2 
+				{:
+					String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+						System.out.println(getIndentation());
+					//RESULT=tab+ "if " + t + " then " + s1 +tab+ else_rec + tab+"else " + s2.toString() + tab +"end\n";
+					RESULT="if " + t + " then " + s1 + else_rec +tab+ "else " + s2.toString();
+				:}
+				| IF test:t error suite:s1 {:pSynWarning("Error ':' expected in 'if' instruction"); disableSem();:}
+				| IF test:t error suite:s1 else_recoursive:else_rec {:pSynWarning("Error ':' expected in 'if' instruction"); disableSem();:}
+				| IF test:t error suite:s1 else_recoursive:else_rec ELSE COLON suite:s2{:pSynWarning("Error ':' expected in 'if' instruction"); disableSem();:}
+				| IF test:t COLON suite:s1 ELSE error suite:s2{:pSynWarning("Error ':' expected in 'else' instruction"); disableSem();:}
+				;
+else_recoursive		::= ELIF test:t COLON suite:s 
+						{:
+							String tab = "";
+							for(int i=0; i<getIndentation(); i++)
+								tab+="\t";
+							RESULT =tab+"elseif " + t.toString() + " then " + s.toString();
+						:}
+						| else_recoursive:else_rec ELIF test:t COLON suite:s  {:
+							String tab = "";
+							for(int i=0; i<getIndentation(); i++)
+								tab+="\t";
+							RESULT =else_rec + tab+"elseif " + t.toString() + " then " + s.toString();
+						:}
+						| ELIF test:t error suite:s {:pSynWarning("Error ':' expected in 'elif' instruction"); disableSem();:}
+						;
+
+while_stmt	::= WHILE test:t COLON suite:s 
+				{:
+					//System.out.println("while_stmt->WHILE test COLON suite");
+					/*String tab = "";
+					for(int i=0; i<getIndentation(); i++)
+						tab+="\t";
+					System.out.println("WHILE indentation: " + getIndentation());
+					RESULT = tab+"while " + t.toString() + " do " + s.toString() +tab+ "end\n";*/
+					RESULT = "while " + t.toString() + " do " + s.toString();
+					//dumpln("while " + t.toString() + " do " + s.toString() + " end");
+				:} 
+				| WHILE test:t COLON suite:s1 ELSE COLON suite:s2
+				{:
+					RESULT = new String[]{t.toString(),s1.toString(),s2.toString()};
+				:}
+				| WHILE test error suite {:pSynWarning("Error ':' expected in 'while' instruction"); disableSem();:}
+				;
+for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
+				{:
+					//se traduciamo letteralmente lua non considera la lista di elementi, quindi dobbiamo inserire il pairs
+					//String suiteMod = s.toString().replace(t + "["+e+"]", "value_dic");
+					/*StringBuilder sb = new StringBuilder();
+					sb.append("if unpack(");
+					sb.append(t);
+					sb.append(")==nil then\n");
+					sb.append("for ");
+					sb.append(e);
+					sb.append(",value_dic");
+					sb.append(" in pairs(");
+					sb.append(t);
+					sb.append(") do ");
+					sb.append(suiteMod);
+					sb.append("end\nelse\n");
+					sb.append("for key_list,");
+					sb.append(e);
+					sb.append(" in pairs(");
+					sb.append(t);
+					sb.append(") do ");
+					sb.append(s);
+					sb.append(" end\n");*/
+					RESULT = "for " +  e + " in pairs("+t+") do "+s;
+					//RESULT = sb.toString(); 
+				:} 
+				| FOR exprlist IN testlist COLON suite ELSE COLON suite
+				| FOR exprlist:e IN range_stmt:r COLON suite:s 
+				{:
+					String[] range = (String[])r;
+					if(range.length == 3)
+						RESULT = "for " + e + "=" + range[0]+","+range[1] + "-1," + range[2]+" do " + s.toString() + " end\n";
+					else
+						RESULT = "for " + e + "=" + range[0]+","+range[1]+"-1 do " + s.toString() + " end\n";
+				:}
+				| FOR exprlist IN testlist error suite:s {:pSynWarning("Error ':' expected in 'for' instruction"); disableSem();:}
+				| FOR exprlist:e IN range_stmt:r error suite:s {:pSynWarning("Error ':' expected in 'for' instruction"); disableSem();:}
+				;
+try_stmt	::= TRY COLON suite:s1 FINALLY COLON suite:s2 {:RESULT = "try:" + s1 + "finally:"+s2;:}
+				| TRY COLON suite:s1 except_clause_recoursive:excrec {:RESULT = "try:" + s1 + excrec;:}
+				| TRY COLON suite:s1 except_clause_recoursive:excrec ELSE COLON suite:s2 {:RESULT = "try:" + s1 + excrec + "else:"+s2;:}
+				| TRY COLON suite:s1 except_clause_recoursive:excrec FINALLY COLON suite:s2 {:RESULT = "try:" + s1 + excrec + "finally:" + s2;:}
+				| TRY COLON suite:s1 except_clause_recoursive:excrec ELSE COLON suite:s2 FINALLY COLON suite:s3 {:RESULT = "try:" + s1 + excrec + "else:"+s2 + "finally:" + s3;:}
+				;
+except_clause_recoursive ::= except_clause:ec COLON suite:s {:RESULT = ec+":"+s;:} | except_clause_recoursive:ecrec except_clause:ec COLON suite:s {:RESULT = ecrec+""+ec+":"+s;:};
+except_clause			::= EXCEPT {:RESULT = "except";:}
+						| EXCEPT test:t {:RESULT = "except " + t;:}
+						| EXCEPT test:t AS test:t2 {:RESULT = "except " + t + " as "+t2;:}
+						| EXCEPT test:t1 COMMA test:t2 {:RESULT = "except " + t1 + "," + t2;:}
+						;
+
+with_stmt				::= WITH with_item:w with_item_recoursive:wr COLON suite:s {:RESULT = "with " + w.toString() + wr.toString()+":"+s.toString();:};
+with_item_recoursive	::= COMMA with_item:w {:RESULT = ","+w;:}|with_item_recoursive:wr COMMA with_item:w {:RESULT = wr.toString()+","+w;:};
+with_item				::= test:t {:RESULT = t;:} | test:t AS expr:e {:RESULT = t + " as " + e;:};
+
+suite	::= simple_stmt:simple 
+			{:
+				System.out.println("suite simple: " + simple.toString());
+				if(simple!=null)RESULT = "\n"+simple.toString();
+			:} 
+			| NEWLINE INDENT stmt_rec:s DEDENT 
+			{:
+				//System.out.println("TOKEN: " + parser.getToken());
+				RESULT = "\n" + s;
+				//System.out.println("suite->NEWLINE INDENT stmt_rec DEDENT: " + s);
+			:}
+			;
+							
+stmt_rec	::= stmt:s {:RESULT = s;:} 
+				| stmt_rec:sr stmt:s {:RESULT = sr.toString() +s.toString();:}
+				;
+
+assign_recoursive		::= ASSIGN testlist:t {:if(t!=null)RESULT ="="+t.toString(); else RESULT = "= nil";:} 
+							| ASSIGN testlist:t assign_recoursive:ass_rec {:RESULT ="="+t.toString()+ass_rec.toString();:}
+							; 
+test					::= comparison:c {:RESULT = c;:} 
+							//| lambdef:l {:RESULT = l;:}
+							;
+comparison				::= expr:e {:RESULT = e;:} 
+							| comparison:comparison binop:binop expr:e  {:RESULT =comparison.toString()+ binop.toString()+e.toString();:}
+							;
+expr					::= atom:a {:RESULT = a;:} | atom:a trailer:t {:RESULT = a.toString() + t.toString();:};
+atom					::= NAME:n {:RESULT = n;:} | number:n {:RESULT = n;:} | STRING:s {:RESULT = s;:}
+							| unop:u  atom:a  {:RESULT = u.toString()+a.toString();:}
+							| LPAREN RPAREN {:RESULT="()";:}
+							| LCURLY RCURLY {:RESULT="{}";:}
+							| LPAREN yield_expr:y RPAREN {:RESULT="("+y.toString()+")";:}
+							| LPAREN testlist_comp:t RPAREN {:RESULT="("+t.toString()+")";:}
+							| LBRACK testlist:t RBRACK 
+							{:
+								if (t!=null)
+									RESULT="{"+t.toString()+"}";
+								else
+									RESULT="{}";
+							:}
+							| LBRACK listmaker:l RBRACK 
+							{:
+								System.out.println("LISTMAKER in atom");
+								if (l!=null)
+									RESULT="{"+l.toString()+"}";
+								else
+									RESULT="{}";
+							:}
+							| LCURLY dictorsetmaker:d RCURLY {:RESULT="{"+d.toString()+"}";:}
+							| LPAREN error {:pSynWarning("Error invalid syntax"); disableSem(); RESULT = "(";:}
+							| LCURLY error 
+							{:
+								pSynWarning("Error invalid syntax");
+								disableSem();
+								RESULT="{";
+							:}
+							| LPAREN yield_expr:y error 
+							{:
+								pSynWarning("Error ')' expected after yield expression");
+								disableSem();
+								RESULT="("+y.toString();
+							:}
+							| LPAREN testlist_comp:t error 
+							{:
+								pSynWarning("Error ')' expected after testlist");
+								disableSem();
+								RESULT="("+t.toString();
+							:}
+							| LBRACK error 
+							{:
+								pSynWarning("Error invalid syntax");
+								disableSem();
+								RESULT="{";
+							:}
+							| LCURLY dictorsetmaker:d error 
+							{:
+								pSynWarning("Error '}' expected in dictionary creation");
+								disableSem();
+								RESULT="{"+d.toString();
+							:}
+							;
+yield_expr				::= YIELD | YIELD testlist;
+
+/* Listmaker per la creazione di liste */
+listmaker				::= test:t list_for:l {:RESULT = t.toString()+l.toString();:} |;
+
+/* Dictionary maker e Set maker pre creare i dizionari oppure gli insiemi. */
+dictorsetmaker			::= test:t1 COLON test:t2 {:RESULT = t1+"="+t2;:}
+						| dictorsetmaker:dic COMMA test:t1 COLON test:t2 {:RESULT = dic +","+ t1+"="+t2;:}
+						;
+/* Sono stati eliminati i riferimenti a old_test e old_lambdef poichè superflui per lo scopo del progetto. */
+testlist_comp			::= test:t list_for:l {:RESULT = t+" "+l;:} | testlist:tlist {:RESULT = tlist;:};
+testlist				::= test:t {:RESULT = t;:}
+						| testlist:tl COMMA test:t {:RESULT = tl.toString()+","+t.toString();:}
+						;
+exprlist				::= expr:e {:RESULT = e;:}
+							|exprlist:explist COMMA expr:e {:RESULT = explist + "," + e;:}
+							;
+
+/* Le lambda form hanno la stessa posizione sintattica delle espressioni e servono per creare funzioni anonime. */
+lambdef					::= LAMBDA COLON test:t {:RESULT="function() return "+t+" end";:} | LAMBDA varargslist:v COLON test:t {:RESULT="lambda "+v.toString()+":"+t.toString();:};
+
+trailer					::= LPAREN RPAREN {:RESULT = "()";:}
+							| LPAREN arglist:a RPAREN {:RESULT = "("+a.toString()+")";:}
+							| LBRACK RBRACK {:RESULT = "[]";:}
+							| LBRACK subscriptlist:s RBRACK {:RESULT = "[" + s.toString() + "]";:}
+							| DOT NAME:n {:RESULT = "."+n.toString();:}
+							;
+subscriptlist			::= subscript:s {:RESULT = s;:} | subscript subscript_rec;
+subscript_rec			::= COMMA subscript | subscript_rec COMMA subscript ;
+subscript				::= TRIDOT {:RESULT="...";:} | test:t {:RESULT = t;:} | COLON {:RESULT=":";:}
+							| test:t COLON {:RESULT=t.toString()+":";:}
+							| test:t COLON test:t2 {:RESULT=t.toString()+":"+t2.toString();:}
+							| test:t COLON test:t2 sliceop:slice {:RESULT=t.toString()+":"+t2.toString()+slice.toString();:}
+							| test:t COLON sliceop:slice {:RESULT=t.toString()+":"+slice.toString();:}
+							| COLON test:t {:RESULT=":"+t.toString();:}
+							| COLON test:t sliceop:slice {:RESULT=":"+t.toString()+slice.toString();:}
+							| COLON sliceop:slice {:RESULT=":"+slice.toString();:}
+							;
+sliceop					::= COLON {:RESULT=":";:} | COLON test:t {:RESULT=":"+t.toString();:};
+
+classdef				::= CLASS NAME COLON suite
+							| CLASS NAME LPAREN RPAREN COLON suite
+							| CLASS NAME LPAREN testlist RPAREN COLON suite
+							;
+
+arglist					::=	argument:a {:RESULT = a;:}
+							| argument:a argument_rec:ar {:RESULT = a + ar.toString();:}
+							| MULT test
+							| MULT test argument_rec
+							| MULT test COMMA MULTMULT test
+							| MULT test argument_rec MULTMULT test
+							| MULTMULT test
+							//| argument argument_rec COMMA MULT test
+							//| argument argument_rec COMMA MULT test COMMA MULTMULT test
+							//| argument argument_rec COMMA MULT test argument_rec COMMA MULTMULT test
+							//| argument argument_rec COMMA MULTMULT test
+							;
+argument_rec			::= COMMA argument:a {:RESULT = ","+a;:} 
+							| COMMA argument:a argument_rec:ar {:RESULT = ","+a+ar;:}
+							| COMMA{:RESULT = ",";:}
+							;
+argument				::= test:t {:RESULT = t.toString();:} 
+							| test:t comp_for:c {:RESULT = t.toString() + " " +c.toString();:} 
+							| test:t1 ASSIGN:assign test:t2 {:RESULT = t1.toString()+assign.toString()+t2.toString();:};
+
+list_iter				::= list_for:l {:RESULT=l.toString();:} | list_if:l {:RESULT=l.toString();:};
+list_for		::= FOR exprlist:e IN testlist:t {:RESULT = "for "+e.toString()+" in "+t.toString();:} 
+					| FOR exprlist:e IN testlist:t list_iter:l {:RESULT = "for "+e.toString()+" in "+t.toString()+l.toString();:}
+					| FOR exprlist:e IN range_stmt:r list_iter:l {::}
+					;
+list_if					::= IF test:t {:RESULT="if "+t.toString();:} | IF test:t list_iter:l {:RESULT = "if "+t.toString()+l.toString();:};
+
+comp_iter				::= comp_for:l {:RESULT=l.toString();:} | comp_if:l {:RESULT=l.toString();:};
+comp_for				::= FOR exprlist:e IN test:t {:RESULT = "for "+e.toString()+" in "+t.toString();:} 
+							| FOR exprlist:e IN test:t comp_iter:c {:RESULT = "for "+e.toString()+" in "+t.toString()+c.toString();:}
+							;
+comp_if					::= IF test:t {:RESULT="if "+t.toString();:} | IF test:t comp_iter:c {:RESULT = "if "+t.toString()+c.toString();:}; 
+
+
+binop 					::= PLUS:p {:RESULT = p;:} | MINUS:m {:RESULT = m;:}| MULT:m {:RESULT = m;:}
+							| DIVIDE:d {:RESULT = d;:}| EXPON:ex {:RESULT = ex;:}| MOD:m {:RESULT = m;:}
+							| IS:is {:RESULT = "==";:}| IN:in {:RESULT = in;:}| IS NOT:isnot {:RESULT = "~=";:}
+							| NOT IN:notin {:RESULT = notin;:}| LSHIFT:lshift {:RESULT = lshift;:}| RSHIFT: rshift{:RESULT = rshift;:}
+		 					| MINOR:min {:RESULT = min;:}| MINEQ:mineq {:RESULT = mineq;:}| MAIOR:mag {:RESULT = mag;:}
+		 					| MAIEQ:maieq {:RESULT = maieq;:}| EQ:eq {:RESULT = eq;:}| NEQ {:RESULT = "~=";:}
+		 					| AND {:RESULT = "and";:}| OR {:RESULT = "or";:}| MULTMULT {:RESULT = "^";:}| NOT:not{:RESULT = not;:}
+		 					| PIPE:p {:RESULT="or";:}|ECOM:ec {:RESULT="and";:}|DIVDIV {:RESULT = "/";:}
+		 					;
+unop					::= MINUS:m {:RESULT=m;:} | PLUS:p {:RESULT=p;:} | TILDE:t {:RESULT=t;:};
+number					::= FLOAT:f {:RESULT = Float.parseFloat(f.toString());:} 
+							| IMAGNUM:i {:RESULT = i.toString();:}
+							| LONGINT:li {:RESULT = li.toString();:} 
+							| DECIMAL:d {:RESULT = Integer.parseInt(d.toString());:}
+							| HEX:h	{:RESULT = h.toString();:} 
+							| OCT:o {:RESULT = o.toString();:}
+							| BIN:b {:RESULT = b.toString();:}
+							;
+comment		::= COMMENT:c {:RESULT = c.toString().replace("#","--");:};
