@@ -62,11 +62,11 @@ block			::= chunk;
 stat			::= varlist ASSIGN explist {:System.out.println("varlist assign explist");:} /*Lua consente assegnazioni multiple*/
 				| functioncall
 				| DO block END
-				| WHILE exp:e DO block:b END {:System.out.println("while statement");:} /*costrutti if while e repeat*/
+				| WHILE exp:e DO block:b END /*costrutti if while e repeat*/
 				| REPEAT block UNTIL exp
 				| if_stat
 				| for_stat /*for statement*/
-				| FUNCTION funcname funcbody {:System.out.println("found Function stat"); :}
+				| FUNCTION funcname funcbody
 				| LOCAL FUNCTION VAR_NAME funcbody
 				| LOCAL namelist
 				| LOCAL namelist ASSIGN explist
@@ -81,9 +81,9 @@ if_recoursive	::= ELSEIF exp THEN block
 /*ripete un blocco di codice incrementando la prima variabile che parte dalla prima exp
 fino alla seconda exp, incrementandosi della terza exp che è opzionale
 Oppure può ciclare in base ad una lista di nomi all'interno di una tabella*/
-for_stat		::= FOR VAR_NAME ASSIGN exp COMMA exp DO block END {:System.out.println("for stat");:}
+for_stat		::= FOR VAR_NAME ASSIGN exp COMMA exp DO block END
 				| FOR VAR_NAME ASSIGN exp COMMA exp COMMA exp DO block END
-				| FOR namelist IN explist DO block END {:System.out.println("for stat in");:}
+				| FOR namelist IN explist DO block END
 				;
 /*
 Il last_stat è stato diviso in break_stat e return_stat per chiarezza
@@ -93,12 +93,12 @@ di un if che non si trovi dentro un ciclo, anche se semanticamente senza
 significato, quindi si è scelto di poter mettere il break anche da solo come per il return. 
 */
 last_stat		::= return_stat | break_stat;
-return_stat		::= RETURN {:System.out.println("return stat");:} 
-				| RETURN explist {:System.out.println("return with explist");:}
+return_stat		::= RETURN 
+				| RETURN explist
 				| RETURN SEMI | RETURN explist SEMI
 				;
-break_stat		::= BREAK {:System.out.println("break stat");:}| BREAK SEMI;
-funcname		::= VAR_NAME:var dot_var_name {:System.out.println("funcname:" + var); :}
+break_stat		::= BREAK | BREAK SEMI;
+funcname		::= VAR_NAME:var dot_var_name
 				| VAR_NAME dot_var_name COLON VAR_NAME
 				;
 dot_var_name	::= | DOT VAR_NAME dot_var_name;
@@ -113,16 +113,16 @@ var				::= VAR_NAME
 				| prefixexp LBRACK exp RBRACK
 				| prefixexp DOT VAR_NAME
 				;
-namelist		::= VAR_NAME | namelist COMMA VAR_NAME {:System.out.println("namelist"); :};
-explist			::= exp_recoursive {:System.out.println("found explist"); :};
-exp_recoursive	::= exp | exp COMMA exp_recoursive {:System.out.println("exp_recoursive"); :};
+namelist		::= VAR_NAME | namelist COMMA VAR_NAME;
+explist			::= exp_recoursive;
+exp_recoursive	::= exp | exp COMMA exp_recoursive;
 /*
 le espressioni che seguono servono per matchare: exp_member (binop exp_member)* e quindi binop exp_member va messo ricorsivo
 */
 exp				::= exp_member_recoursive;
-exp_member_recoursive ::= exp_member | exp_member binop exp_member_recoursive {:System.out.println("found binop exp");:};
+exp_member_recoursive ::= exp_member | exp_member binop exp_member_recoursive;
 exp_member		::= NIL | FALSE | TRUE
-				| number {:System.out.println("found number");:}
+				| number
 				| string
 				| function
 				| prefixexp
@@ -130,34 +130,34 @@ exp_member		::= NIL | FALSE | TRUE
 				| TRIDOT
 				| unop exp_member
 				;
-prefixexp		::= var {: System.out.println("prefixexp->var"); :} | functioncall {: System.out.println("prefixexp->functioncall"); :}; //manca | LPAREN exp RPAREN;
+prefixexp		::= var | functioncall; //manca | LPAREN exp RPAREN;
 /* la forma base sarebbe "prefixexp args"
 si usa "prefix : Name args" per chiamare metodi, infatti esso
 v:name(args) è l'equivalente di chiamare v.name(v,args) solo che v
 viene valutato solo una volta.
 */
-functioncall	::= prefixexp args {:System.out.println("function call"); :} | prefixexp COLON VAR_NAME args {:System.out.println("function call"); :};
+functioncall	::= prefixexp args | prefixexp COLON VAR_NAME args;
 /*
 per gli argomenti, la chiamata f{fields} è equivalente a f({fields})
 oppure per chiamare una sringa per argomento f"string", f'string', f[[string]]
 sono equivalenti a f("string")
 */
-args			::= LPAREN RPAREN {:System.out.println("args ()"); :}
-				| LPAREN explist RPAREN {:System.out.println("args (explist)"); :}
+args			::= LPAREN RPAREN
+				| LPAREN explist RPAREN
 				| tableconstructor
 				| string
 				;
-function		::= FUNCTION funcbody {:System.out.println("function"); :};
-funcbody		::= LPAREN RPAREN block END {:System.out.println("functionbody");:}
-				| LPAREN parlist RPAREN block END {:System.out.println("functionbody with par");:}
+function		::= FUNCTION funcbody;
+funcbody		::= LPAREN RPAREN block END
+				| LPAREN parlist RPAREN block END
 				;
 parlist			::= namelist
 				| namelist COMMA TRIDOT
 				| TRIDOT
 				;
-tableconstructor ::= LCURLY RCURLY | LCURLY fieldlist RCURLY {: System.out.println("table constructor");:};
-fieldlist		::= field {:System.out.println("found a field"); :} 
-				| fieldlist fieldsep field   {:System.out.println("found fieldlist"); :}
+tableconstructor ::= LCURLY RCURLY | LCURLY fieldlist RCURLY;
+fieldlist		::= field 
+				| fieldlist fieldsep field
 				;
 field			::= LBRACK exp RBRACK ASSIGN exp
 				| VAR_NAME ASSIGN exp
