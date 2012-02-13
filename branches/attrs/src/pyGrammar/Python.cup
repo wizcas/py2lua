@@ -90,7 +90,7 @@ action code
     private void pSynWarning(String message){
         System.err.println("SYN WARNING: line: "+parser.getLine()+" col: "+parser.getColumn()+": "+message);
         /* Quando c'e' un errore sintattico continuo il parsing ma disabilito la semantica */
-        //disableSem();
+        disableSem();
     }
         
     // Write a string in output
@@ -311,46 +311,46 @@ parameters		::= LPAREN RPAREN {::}
 					:}
 					;
 
-varargslist				::= defparameter_recoursive:d 
-							{:
-								RESULT = d; 
-							:}
-							| defparameter_recoursive:d COMMA MULT NAME:n 
-							{:
-								d.add(new Attributo(n,AttrType.LIST));
-								RESULT = d;
-							:}
-							| defparameter_recoursive:d COMMA MULTMULT NAME:n 
-							{:
-								d.add(new Attributo(n,AttrType.DICT));
-								RESULT = d;
-							:}
-							| defparameter_recoursive:d COMMA MULT NAME:n1 COMMA MULTMULT NAME:n2
-							{:
-								d.add(new Attributo(n1,AttrType.LIST));
-								d.add(new Attributo(n2,AttrType.DICT));
-								RESULT = d;
-							:}
-							| MULT NAME:n 
-							{:
-								LinkedList<Attributo> list = new LinkedList<Attributo>();
-								list.add(new Attributo(n,AttrType.LIST));
-								RESULT = list; 
-							:}
-							| MULT NAME:n1 COMMA MULTMULT NAME:n2 
-							{:
-								LinkedList<Attributo> list = new LinkedList<Attributo>();
-								list.add(new Attributo(n1,AttrType.LIST));
-								list.add(new Attributo(n2,AttrType.DICT));
-								RESULT = list;
-							:}
-							| MULTMULT NAME:n 
-							{:
-								LinkedList<Attributo> list = new LinkedList<Attributo>();
-								list.add(new Attributo(n,AttrType.DICT));
-								RESULT = list; 
-							:}
-							;
+varargslist	::= defparameter_recoursive:d 
+				{:
+					RESULT = d; 
+				:}
+				| defparameter_recoursive:d COMMA MULT NAME:n 
+				{:
+					d.add(new Attributo(n,AttrType.LIST));
+					RESULT = d;
+				:}
+				| defparameter_recoursive:d COMMA MULTMULT NAME:n 
+				{:
+					d.add(new Attributo(n,AttrType.DICT));
+					RESULT = d;
+				:}
+				| defparameter_recoursive:d COMMA MULT NAME:n1 COMMA MULTMULT NAME:n2
+				{:
+					d.add(new Attributo(n1,AttrType.LIST));
+					d.add(new Attributo(n2,AttrType.DICT));
+					RESULT = d;
+				:}
+				| MULT NAME:n 
+				{:
+					LinkedList<Attributo> list = new LinkedList<Attributo>();
+					list.add(new Attributo(n,AttrType.LIST));
+					RESULT = list; 
+				:}
+				| MULT NAME:n1 COMMA MULTMULT NAME:n2 
+				{:
+					LinkedList<Attributo> list = new LinkedList<Attributo>();
+					list.add(new Attributo(n1,AttrType.LIST));
+					list.add(new Attributo(n2,AttrType.DICT));
+					RESULT = list;
+				:}
+				| MULTMULT NAME:n 
+				{:
+					LinkedList<Attributo> list = new LinkedList<Attributo>();
+					list.add(new Attributo(n,AttrType.DICT));
+					RESULT = list; 
+				:}
+				;
 defparameter_recoursive	::= defparameter:d 
 							{:
 								LinkedList<Attributo> list = new LinkedList<Attributo>();
@@ -443,19 +443,11 @@ expr_stmt	::= testlist:t {:	RESULT=t.name;	:}
 				| testlist:t1 ASSIGN testlist:t2
 				{:
 					if(((LinkedList<Attributo>)t1.value).size() == ((LinkedList<Attributo>)t2.value).size())
-					{
 						RESULT = t1.name +"="+t2.name;
-					}
 					else if(((LinkedList<Attributo>)t1.value).size() == 1 && ((LinkedList<Attributo>)t2.value).size()>1)
-					{
 						RESULT = t1.name +"= {"+t2.name+"}";
-					}
 					else
-					{
-						pSynWarning("Error in assignment");
-						throw new Exception("Error in assignment");
-					}
-					
+						pSemError("Error in assignment");				
 				:}
 				;
 augassign		::= PLUSEQ {:RESULT="+";:}| MINUSEQ {:RESULT="-";:} | MULTEQ {:RESULT="*";:} 
@@ -529,6 +521,26 @@ if_stmt		::= IF test:t COLON suite:s else_recoursive:else_rec
 				{:
 					RESULT="if " + t.name.replaceAll("[\\{\\}]","") + " then " + s1 + else_rec + "else " + s2;
 				:}
+				| IF test:t error suite:s1 
+				{:
+					pSynWarning("Error ':' expected in 'if' instruction");
+					RESULT ="if " + t.name.replaceAll("[\\{\\}]","") + " then " + s1;
+				:}
+				| IF test:t error suite:s1 else_recoursive:else_rec 
+				{:
+					pSynWarning("Error ':' expected in 'if' instruction");
+					RESULT ="if " + t.name.replaceAll("[\\{\\}]","") + " then " + s1 + else_rec;
+				:}
+				| IF test:t error suite:s1 else_recoursive:else_rec ELSE COLON suite:s2
+				{:
+					pSynWarning("Error ':' expected in 'if' instruction");
+					RESULT="if " + t.name.replaceAll("[\\{\\}]","") + " then " + s1 + else_rec + "else " + s2;
+				:}
+				| IF test:t COLON suite:s1 ELSE error suite:s2
+				{:
+					pSynWarning("Error ':' expected in 'else' instruction");
+					RESULT="if " + t.name.replaceAll("[\\{\\}]","") + " then " + s1 + "else " + s2;
+				:}
 				;
 else_recoursive		::= ELIF test:t COLON suite:s 
 						{:
@@ -538,10 +550,20 @@ else_recoursive		::= ELIF test:t COLON suite:s
 						{:
 							RESULT =else_rec + "elseif " + t.name.replaceAll("[\\{\\}]","") + " then " + s;
 						:}
+						| ELIF test:t error suite:s 
+						{:
+							pSynWarning("Error ':' expected in 'elif' instruction");
+							RESULT = "elseif " + t.name.replaceAll("[\\{\\}]","") + " then " + s;
+						:}
 						;
 while_stmt	::= WHILE test:t COLON suite:s 
 				{:					
 					RESULT = "while " + t.name.replaceAll("[\\{\\}]","") + " do " + s.toString();
+				:}
+				| WHILE test:t error suite:s 
+				{:
+					pSynWarning("Error ':' expected in 'while' instruction");
+					RESULT = "while " + t.name.replaceAll("[\\{\\}]","") + " do " + s;
 				:}
 				;
 for_stmt	::= FOR expr:e IN test:t COLON suite:s
@@ -553,6 +575,23 @@ for_stmt	::= FOR expr:e IN test:t COLON suite:s
 				:} 
 				| FOR exprlist:e IN range_stmt:r COLON suite:s 
 				{:
+					String[] range = (String[])r;
+					if(range.length == 3)
+						RESULT = "for " + e.name + "=" + range[0]+","+range[1] + "-1," + range[2]+" do " + s;
+					else
+						RESULT = "for " + e.name + "=" + range[0]+","+range[1]+"-1 do " + s;
+				:}
+				| FOR exprlist:e IN testlist:t error suite:s 
+				{:
+					pSynWarning("Error ':' expected in 'for' instruction"); disableSem();
+					if (t.type == AttrType.DICT)
+						RESULT = "for " + e.name + " in pairs(" + t.name + ") do " + s;
+					else
+						RESULT = "for __k, " + e.name + " in pairs(" + t.name + ") do " + s;
+				:}
+				| FOR exprlist:e IN range_stmt:r error suite:s 
+				{:
+					pSynWarning("Error ':' expected in 'for' instruction"); disableSem();
 					String[] range = (String[])r;
 					if(range.length == 3)
 						RESULT = "for " + e.name + "=" + range[0]+","+range[1] + "-1," + range[2]+" do " + s;
@@ -608,7 +647,6 @@ comparison	::= expr:e
 				:} 
 				| comparison:comparison binop:binop expr:e  
 				{:
-					System.out.println("in comparison binop");
 					comparison.name = comparison.name + binop.toString() + e.name;
 					comparison.type = AttrType.OPERATION;
 					RESULT = comparison;
@@ -646,6 +684,23 @@ atom		::= NAME:n {:RESULT = new Attributo(n,AttrType.ID);:}
 				{:
 					d.name = "{"+d.name+"}";
 					RESULT = d;
+				:}
+				| LPAREN error {:pSynWarning("Error invalid syntax"); RESULT=new Attributo("{",AttrType.TUPLE, new LinkedList<Attributo>());:}
+				| LCURLY error {:pSynWarning("Error invalid syntax"); RESULT=new Attributo("{",AttrType.DICT, new LinkedList<Attributo>());:}
+				| LPAREN testlist_comp:t error 
+				{:
+					pSynWarning("Error ')' expected after testlist");
+					RESULT=new Attributo("{"+t.name+"}",AttrType.TUPLE, (LinkedList<Attributo>)t.value);
+				:}
+				| LBRACK error 
+				{:
+					pSynWarning("Error invalid syntax");
+					RESULT=new Attributo("{",AttrType.LIST, new LinkedList<Attributo>());				
+				:}
+				| LCURLY dictorsetmaker:d error 
+				{:
+					pSynWarning("Error invalid syntax");
+					RESULT=new Attributo("{"+d.name,AttrType.DICT, (LinkedList<Attributo>)d.value);
 				:}
 				;
 testlist_comp	::= testlist:tlist{:RESULT = tlist;:};
@@ -739,7 +794,8 @@ arglist	::= argument:a
 				if (t.type == AttrType.DICT)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: passing a dictionary after '*'");
+					//pSynWarning("Error: passing a dictionary after '*'");
+					pSemError("Error: passing a dictionary after '*'");
 				}
 				RESULT = "unpack("+t.name+")"; 
 			:}
@@ -748,7 +804,8 @@ arglist	::= argument:a
 				if (t.type == AttrType.DICT)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: passing a dictionary after '*'");
+					//pSynWarning("Error: passing a dictionary after '*'");
+					pSemError("Error: passing a dictionary after '*'");
 				}
 				RESULT = "unpack("+t.name+"),"+ar.name+a.name;
 			:}
@@ -757,12 +814,14 @@ arglist	::= argument:a
 				if (t1.type != AttrType.LIST && t1.type != AttrType.ID)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: must pass list after '*'");
+					//pSynWarning("Error: must pass list after '*'");
+					pSemError("Error: must pass list after '*'");
 				}
 				if (t2.type != AttrType.DICT && t2.type != AttrType.ID)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: must pass dict after '**'");
+					//pSynWarning("Error: must pass dict after '**'");
+					pSemError("Error: must pass dict after '**'");
 				}
 				RESULT = "unpack("+t1.name+"),"+t2.name;
 			:}
@@ -771,12 +830,14 @@ arglist	::= argument:a
 				if (t1.type != AttrType.LIST && t1.type != AttrType.ID)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: must pass list after '*'");
+					//pSynWarning("Error: must pass list after '*'");
+					pSemError("Error: must pass list after '*'");
 				}
 				if (t2.type != AttrType.DICT && t2.type != AttrType.ID)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: must pass dict after '**'");
+					//pSynWarning("Error: must pass dict after '**'");
+					pSemError("Error: must pass dict after '**'");
 				}
 				else
 					RESULT = "unpack("+t1.name+"),"+ar.name+a.name+","+t2.name;
@@ -786,7 +847,8 @@ arglist	::= argument:a
 				if (t.type == AttrType.LIST)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: must pass dict after '**'");
+					//pSynWarning("Error: must pass dict after '**'");
+					pSemError("Error: must pass dict after '**'");
 				}
 				RESULT = t.name;
 			:}
@@ -799,7 +861,8 @@ arglist	::= argument:a
 				if (t.type == AttrType.DICT)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: passing a dictionary after '*'");
+					//pSynWarning("Error: passing a dictionary after '*'");
+					pSemError("Error: passing a dictionary after '*'");
 				}
 				RESULT = ar1.name+"unpack("+t.name+")";
 			:}
@@ -808,7 +871,8 @@ arglist	::= argument:a
 				if (t.type == AttrType.DICT)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: passing a dictionary after '*'");
+					//pSynWarning("Error: passing a dictionary after '*'");
+					pSemError("Error: passing a dictionary after '*'");
 				}
 				RESULT = ar1.name+"unpack("+t.name+"),"+ar2.name+a.name;
 			:}
@@ -817,12 +881,14 @@ arglist	::= argument:a
 				if (t1.type != AttrType.LIST && t1.type != AttrType.ID)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: must pass list after '*'");
+					//pSynWarning("Error: must pass list after '*'");
+					pSemError("Error: must pass list after '*'");
 				}
 				if (t2.type != AttrType.DICT && t2.type != AttrType.ID)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: must pass dict after '**'");
+					//pSynWarning("Error: must pass dict after '**'");
+					pSemError("Error: must pass dict after '**'");
 				}
 				RESULT = ar.name+"unpack("+t1.name+"),"+t2.name;
 			:}
@@ -831,12 +897,14 @@ arglist	::= argument:a
 				if (t1.type != AttrType.LIST && t1.type != AttrType.ID)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: must pass list after '*'");
+					//pSynWarning("Error: must pass list after '*'");
+					pSemError("Error: must pass list after '*'");
 				}
 				if (t2.type != AttrType.DICT && t2.type != AttrType.ID)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: must pass dict after '**'");
+					//pSynWarning("Error: must pass dict after '**'");
+					pSemError("Error: must pass dict after '**'");
 				}
 				RESULT = ar1.name+"unpack("+t1.name+"),"+ar2.name+a.name+","+t2.name;
 			:}
@@ -845,7 +913,8 @@ arglist	::= argument:a
 				if (t.type == AttrType.LIST)
 				{
 					//throw new Exception("Error: passing a dictionary with '*'");
-					pSynWarning("Error: must pass dict after '**'");
+					//pSynWarning("Error: must pass dict after '**'");
+					pSemError("Error: must pass dict after '**'");
 				}
 				RESULT = ar.name+t.name;
 			:}
@@ -871,7 +940,6 @@ argument	::= test:t {:RESULT = t;:}
 					RESULT = new Attributo(t1.name+"="+t2.name,AttrType.ASSIGN);
 				:}
 				;
-
 
 binop 	::= PLUS:p {:RESULT = p;:} | MINUS:m {:RESULT = m;:}| MULT:m {:RESULT = m;:}
 		| DIVIDE:d {:RESULT = d;:}| EXPON:ex {:RESULT = ex;:}| MOD:m {:RESULT = m;:}
