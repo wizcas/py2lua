@@ -943,12 +943,12 @@ argument	::= test:t {:RESULT = t;:}
 
 binop 	::= PLUS:p {:RESULT = p;:} | MINUS:m {:RESULT = m;:}| MULT:m {:RESULT = m;:}
 		| DIVIDE:d {:RESULT = d;:}| EXPON:ex {:RESULT = ex;:}| MOD:m {:RESULT = m;:}
-		| IS:is {:RESULT = "==";:}| IN:in {:RESULT = in;:}| IS NOT:isnot {:RESULT = "~=";:}
+		| IS:is {:RESULT = "==";:}| IN:in {:RESULT = " in ";:}| IS NOT:isnot {:RESULT = "~=";:}
 		| NOT IN:notin {:RESULT = notin;:}| LSHIFT:lshift {:RESULT = lshift;:}| RSHIFT: rshift{:RESULT = rshift;:}
  		| MINOR:min {:RESULT = min;:}| MINEQ:mineq {:RESULT = mineq;:}| MAIOR:mag {:RESULT = mag;:}
 		| MAIEQ:maieq {:RESULT = maieq;:}| EQ:eq {:RESULT = eq;:}| NEQ {:RESULT = "~=";:}
- 		| AND {:RESULT = "and";:}| OR {:RESULT = "or";:}| MULTMULT {:RESULT = "^";:}| NOT:not{:RESULT = not;:}
- 		| PIPE:p {:RESULT="or";:}|ECOM:ec {:RESULT="and";:}|DIVDIV {:RESULT = "/";:}
+ 		| AND {:RESULT = " and ";:}| OR {:RESULT = " or ";:}| MULTMULT {:RESULT = "^";:}| NOT:not{:RESULT = not;:}
+ 		| PIPE:p {:RESULT=" or ";:}|ECOM:ec {:RESULT=" and ";:}|DIVDIV {:RESULT = "/";:}
  		;
 unop	::= MINUS:m {:RESULT=m;:} | PLUS:p {:RESULT=p;:} | TILDE:t {:RESULT=t;:};
 number	::= FLOAT:f {:RESULT = new Attributo(f.toString(), AttrType.NUMBER);:} 
