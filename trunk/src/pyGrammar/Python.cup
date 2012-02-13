@@ -709,8 +709,7 @@ for_stmt	::= FOR exprlist:e IN testlist:t COLON suite:s
 					sb.append(" end\n");*/
 					RESULT = "for " +  e + " in pairs("+t+") do "+s;
 					//RESULT = sb.toString(); 
-				:} 
-				| FOR exprlist IN testlist COLON suite ELSE COLON suite
+				:}
 				| FOR exprlist:e IN range_stmt:r COLON suite:s 
 				{:
 					String[] range = (String[])r;
