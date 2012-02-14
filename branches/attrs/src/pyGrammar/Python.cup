@@ -236,7 +236,7 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 			{:
 				boolean vararg = false;
 				String asyouwant = 
-				    "#{INDENT}function #{ID}(#{PARAMS})\n"
+				    "function #{ID}(#{PARAMS})\n"
 				  + "#{BODY}";
 				
 				asyouwant = asyouwant.replaceAll("#\\{ID\\}", n);
@@ -260,10 +260,10 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 							}
 							
 							String args = 
-							    "#{INDENT}\tlocal "+a.name+" = { }\n"
-							  + "#{INDENT}\tfor i = 1,#arg-1 do\n"
-							  + "#{INDENT}\t\t"+a.name+"[i] = arg[i]\n"
-							  + "#{INDENT}\tend\n"
+							    "\tlocal "+a.name+" = { }\n"
+							  + "\tfor i = 1,#arg-1 do\n"
+							  + "\t\t"+a.name+"[i] = arg[i]\n"
+							  + "\tend\n"
 							  + "#{BODY}";
 							
 							asyouwant = asyouwant.replaceAll("#\\{BODY\\}", args);
@@ -277,14 +277,14 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 							}
 							
 							String kwargs = 
-							    "#{INDENT}\tlocal "+a.name+" = arg[#arg]\n"
+							    "\tlocal "+a.name+" = arg[#arg]\n"
 							  + "#{BODY}";
 							
 							asyouwant = asyouwant.replaceAll("#\\{BODY\\}", kwargs);
 							break;
 						case ASSIGN:
 							String init = 
-							    "#{INDENT}\tlocal "+a.name+"\n"
+							    "\tlocal "+a.name+"\n"
 							  + "#{BODY}";
 							
 							asyouwant = asyouwant.replaceAll("#\\{PARAMS\\}", a.name.split("=")[0] +",#{PARAMS}");
@@ -292,12 +292,6 @@ funcdef		::= DEF NAME:n parameters:p COLON suite:s
 							break;
 					}
 				}
-				StringBuilder indentation = new StringBuilder();
-				
-				for (int i = 0; i < getIndentation(); i++)
-					indentation.append("\t");
-				 
-				asyouwant = asyouwant.replaceAll("#\\{INDENT\\}", indentation.toString());
 				asyouwant = asyouwant.replaceAll("#\\{PARAMS\\}", "");
 				asyouwant = asyouwant.replaceAll(",\\)", ")");
 				asyouwant = asyouwant.replaceAll("#\\{BODY\\}", s);
@@ -376,11 +370,6 @@ defparameter	::= NAME:n
 stmt			::= simple_stmt:s {:RESULT = s;:} 
 					| compound_stmt:compound 
 					{:
-						/*String tab = "";
-						for(int i=0; i<getIndentation(); i++)
-							tab+="\t";
-						System.out.println("Compound indentation: " + getIndentation());	
-						RESULT =tab+ compound+tab+"end\n";*/
 						RESULT = compound + "end\n";
 					:}
 					;
@@ -395,18 +384,10 @@ small_stmt_rec	::= SEMI small_stmt:s {:RESULT = ";"+s.toString();:}
 					;
 small_stmt		::= expr_stmt:e 
 					{:
-						/*String tab = "";
-						for(int i=0; i<getIndentation(); i++)
-							tab+="\t";
-						RESULT =tab+e.toString(); System.out.println("Found expr_stmt");*/
 						RESULT = e.toString();
 					:}
 					| print_stmt:p 
 					{:
-						/*String tab = "";
-						for(int i=0; i<getIndentation(); i++)
-							tab+="\t";
-						RESULT = tab+p.toString();*/
 						RESULT = p.toString();
 					:}
 					| range_stmt:r {:RESULT = r.toString();:}
@@ -414,10 +395,6 @@ small_stmt		::= expr_stmt:e
 					| PASS:p {:RESULT=p; System.out.println("Found PASS_stmt");:}
 					| flow_stmt:f 
 					{:
-						/*String tab = "";
-						for(int i=0; i<getIndentation(); i++)
-							tab+="\t";
-						RESULT = tab+f;*/
 						RESULT = f;
 					:}
 					| import_stmt:i 
@@ -615,27 +592,18 @@ except_clause			::= EXCEPT {:RESULT = "except";:}
 suite	::= simple_stmt:simple {:System.out.println("suite simple: " + simple.toString());RESULT = "\n"+simple.toString();:} 
 			| NEWLINE INDENT stmt_rec:s DEDENT 
 			{:
-				//System.out.println("TOKEN: " + parser.getToken());
-				RESULT = "\n" + s;
-				//System.out.println("suite->NEWLINE INDENT stmt_rec DEDENT: " + s);
+				String t = ((String)s).replaceAll("\n", "\n\t"); 
+				RESULT = "\n\t" + t + "\n";
 			:}
 			;
 							
 stmt_rec	::= stmt:s 
 				{:
-					int tab = getIndentation();
-					StringBuilder sb = new StringBuilder();
-					for(int i = 0; i<tab; i++)
-						sb.append("\t");
-					RESULT = sb.toString()+s;
+					RESULT = s.toString();
 				:} 
 				| stmt_rec:sr stmt:s 
 				{:
-					int tab = getIndentation();
-					StringBuilder sb = new StringBuilder();
-					for(int i = 0; i<tab; i++)
-						sb.append("\t");
-					RESULT = sr.toString() + sb.toString() + s.toString();
+					RESULT = sr.toString() + s.toString();
 				:}
 				;
 
