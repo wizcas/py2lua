@@ -59,7 +59,7 @@ stat_recoursive ::= stat
 /* un blocco è una lista di statement, sintatticamente è come un chunk*/
 block			::= chunk;
 /*un blocco può essere esplicitamente delimitato per produrre un singolo statement*/
-stat			::= varlist ASSIGN explist {:System.out.println("varlist assign explist");:} /*Lua consente assegnazioni multiple*/
+stat			::= varlist ASSIGN explist /*Lua consente assegnazioni multiple*/
 				| functioncall
 				| DO block END
 				| WHILE exp:e DO block:b END /*costrutti if while e repeat*/

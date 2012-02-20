@@ -29,7 +29,7 @@ public class Program
 	public static void main(String args[])
 	{
 		System.out.println("source-to-source compiler.");
-		PythonCup.dumpOutput = "Traduzione.txt";
+		PythonCup.dumpOutput = "Translation.lua";
 		PythonLex lexer;
 		try {
 			lexer = new PythonLex(new FileReader("python.py"));
@@ -53,7 +53,7 @@ public class Program
 		
 		LuaGrammarLex luaLexer;
 		try {
-			luaLexer = new LuaGrammarLex(new FileReader("Traduzione.txt"));
+			luaLexer = new LuaGrammarLex(new FileReader("Translation.lua"));
 			LuaGrammarCup luaParser = new LuaGrammarCup(luaLexer);
 			luaParser.parse();
 			System.out.println("All rigth: translated successfully");

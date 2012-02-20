@@ -177,13 +177,10 @@ HexDigit 			= [0-9|a-f|A-F]
 {ASSIGN}		{return sym(ASSIGN); }
 {SEMI}			{	return sym(SEMI); }
 {HEX}			{	return sym(HEX); }
-{COMMENT}		{ System.out.println("Comment");}
-{LINE_COMMENT}	{ System.out.println("Line comment");}
+{COMMENT}		{}
+{LINE_COMMENT}	{ }
 {WS}			{}
 {NEWLINE}		{}
-{NORMALSTRING}	{ System.out.println("Found String");	
-				return sym(NORMALSTRING); }
-{CHARSTRING}	{ System.out.println("Found Char String");	
-				return sym(CHARSTRING); }
-{LONGSTRING}	{ System.out.println("Found Long String");	
-				return sym(LONGSTRING); }
+{NORMALSTRING}	{return sym(NORMALSTRING); }
+{CHARSTRING}	{return sym(CHARSTRING); }
+{LONGSTRING}	{return sym(LONGSTRING); }
