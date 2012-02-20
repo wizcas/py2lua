@@ -392,7 +392,7 @@ small_stmt		::= expr_stmt:e
 					:}
 					| range_stmt:r {:RESULT = r.toString();:}
 					| del_stmt:d {:RESULT=d;:}
-					| PASS:p {:RESULT=p; System.out.println("Found PASS_stmt");:}
+					| PASS:p {:RESULT=p;:}
 					| flow_stmt:f 
 					{:
 						RESULT = f;
@@ -402,7 +402,7 @@ small_stmt		::= expr_stmt:e
 						pSemWarning("Found import_stmt not supported in LUA");
 						RESULT = "--[[Import not supported in LUA\n"+i+"]]";
 					:}
-         			| assert_stmt:a {:System.out.println("Found assert_stmt"); RESULT = a;:}
+         			| assert_stmt:a {:RESULT = a;:}
          			| global_stmt:g 
          			{:
          				pSemWarning("Found global_stmt not supported in LUA");
@@ -472,7 +472,7 @@ global_stmt				::= GLOBAL name_recoursive:n {:RESULT="global "+n.toString();:};
 name_recoursive			::= NAME:n {:RESULT=n;:} | name_recoursive:nr COMMA NAME:n {:RESULT=nr+","+n;:};
 assert_stmt				::= ASSERT testlist:t {:RESULT = "assert (" + t.name + ")";:};
 
-compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt);:}
+compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt;:}
 					| while_stmt:w {:RESULT = w.toString();:}
 					| for_stmt:f {:RESULT = f.toString();:}
 					| try_stmt:t 
@@ -480,7 +480,7 @@ compound_stmt	::= if_stmt:if_stmt {:RESULT = if_stmt; System.out.println(if_stmt
 						pSynWarning("Try statement not supported in LUA");
 						RESULT = "--[[Try statement not supported in LUA\n" + t.toString() + "]]";
 					:}
-					| funcdef:f {:System.out.println("funcdef: " + f); RESULT = f.toString();:}
+					| funcdef:f {:RESULT = f.toString();:}
 					;
 if_stmt		::= IF test:t COLON suite:s else_recoursive:else_rec 
 				{:
@@ -589,7 +589,7 @@ except_clause			::= EXCEPT {:RESULT = "except";:}
 						| EXCEPT test:t1 COMMA test:t2 {:RESULT = "except " + t1 + "," + t2;:}
 						;
 						
-suite	::= simple_stmt:simple {:System.out.println("suite simple: " + simple.toString());RESULT = "\n"+simple.toString();:} 
+suite	::= simple_stmt:simple {:RESULT = "\n"+simple.toString();:} 
 			| NEWLINE INDENT stmt_rec:s DEDENT 
 			{:
 				String t = ((String)s).replaceAll("\n", "\n\t"); 
